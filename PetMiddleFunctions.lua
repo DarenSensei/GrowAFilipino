@@ -10,7 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 -- Pet Radius Control Configuration
-local RADIUS = 0.5
+local RADIUS = 1
 local LOOP_DELAY = 1
 local INITIAL_LOOP_TIME = 5
 local ZONE_ABILITY_DELAY = 3
