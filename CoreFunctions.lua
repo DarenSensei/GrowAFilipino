@@ -1,6 +1,5 @@
--- GG-Functions.lua
 -- Complete Functions for Grow A Garden Script Loader
-
+-- External for MAIN
 local Functions = {}
 
 -- Services
