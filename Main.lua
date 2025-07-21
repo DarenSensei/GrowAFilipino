@@ -74,7 +74,7 @@ local buyConnection = nil
 
 -- Create Orion UI
 local Window = OrionLib:MakeWindow({
-    Name = "GAGSL Hub (v1.2.1)",
+    Name = "GAGSL Hub (v1.2.2)",
     HidePremium = false,
     IntroText = "Grow A Garden Script Loader",
     SaveConfig = false
