@@ -433,26 +433,97 @@ function PetFunctions.refreshPets()
 end
 
 -- Function to update pet count
+-- Fixed version of PetFunctions.updatePetCount()
 function PetFunctions.updatePetCount()
-    local pets = PetFunctions.getAllPets()
+    -- Safely get all pets
+    local success, pets = pcall(PetFunctions.getAllPets)
+    if not success or not pets then
+        pets = {}
+    end
+    
     local selectedCount = 0
     local excludedCount = 0
     
-    for petId, _ in pairs(selectedPets) do
-        selectedCount = selectedCount + 1
-    end
+    -- Get these variables from the main script's scope
+    local mainSelectedPets = PetFunctions.getSelectedPets and PetFunctions.getSelectedPets() or {}
+    local mainExcludedPets = PetFunctions.getExcludedPets and PetFunctions.getExcludedPets() or {}
+    local mainAllPetsSelected = PetFunctions.getAllPetsSelected and PetFunctions.getAllPetsSelected() or false
     
-    for petId, _ in pairs(excludedPets) do
+    -- Count excluded pets first
+    for petId, _ in pairs(mainExcludedPets) do
         excludedCount = excludedCount + 1
     end
     
-    if allPetsSelected then
-        selectedCount = #pets
+    -- Calculate selected count
+    if mainAllPetsSelected then
+        selectedCount = #pets - excludedCount
+    else
+        for petId, _ in pairs(mainSelectedPets) do
+            selectedCount = selectedCount + 1
+        end
     end
     
-    if petCountLabel then
-        petCountLabel:Set("Pets Found: " .. #pets .. " | Selected: " .. selectedCount .. " | Excluded: " .. excludedCount)
+    -- Update the label safely
+    local labelText = string.format("Pets Found: %d | Selected: %d | Excluded: %d", 
+        #pets, selectedCount, excludedCount)
+    
+    if PetFunctions.petCountLabel then
+        local success, error = pcall(function()
+            local label = PetFunctions.petCountLabel
+            
+            -- Try different methods to update the label
+            if label.Set then
+                label:Set(labelText)
+            elseif label.Update then
+                label:Update(labelText)
+            elseif label.Text then
+                label.Text = labelText
+            elseif label.Label then
+                label.Label = labelText
+            else
+                -- Try to find a property that might work
+                for propertyName, propertyValue in pairs(label) do
+                    if type(propertyValue) == "string" and propertyName:lower():find("text") then
+                        label[propertyName] = labelText
+                        break
+                    end
+                end
+            end
+        end)
+        
+        if not success then
+            warn("Failed to update pet count label: " .. tostring(error))
+        end
     end
+end
+
+-- Additional helper functions that should be added to PetFunctions:
+function PetFunctions.getSelectedPets()
+    return selectedPets or {}
+end
+
+function PetFunctions.getExcludedPets()
+    return excludedPets or {}
+end
+
+function PetFunctions.getAllPetsSelected()
+    return allPetsSelected or false
+end
+
+function PetFunctions.setSelectedPets(pets)
+    selectedPets = pets
+end
+
+function PetFunctions.setExcludedPets(pets)
+    excludedPets = pets
+end
+
+function PetFunctions.setAllPetsSelected(value)
+    allPetsSelected = value
+end
+
+function PetFunctions.setPetCountLabel(label)
+    PetFunctions.petCountLabel = label
 end
 
 -- Helper functions for external use
