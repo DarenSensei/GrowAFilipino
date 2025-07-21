@@ -10,7 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 -- Pet Radius Control Configuration
-local RADIUS = 1
+local RADIUS = 0.1
 local LOOP_DELAY = 1
 local INITIAL_LOOP_TIME = 5
 local ZONE_ABILITY_DELAY = 3
@@ -401,6 +401,8 @@ function PetFunctions.selectAllPets()
     for _, pet in pairs(pets) do
         selectedPets[pet.id] = true
     end
+    -- Update the count after selecting all pets
+    PetFunctions.updatePetCount()
 end
 
 -- Function to update dropdown options
@@ -429,10 +431,10 @@ function PetFunctions.refreshPets()
     petsFolder = PetFunctions.findPetsFolder()
     local pets = PetFunctions.getAllPets()
     PetFunctions.updateDropdownOptions()
+    PetFunctions.updatePetCount() -- Add this to refresh the count
     return pets
 end
 
--- Function to update pet count
 -- Fixed version of PetFunctions.updatePetCount()
 function PetFunctions.updatePetCount()
     -- Safely get all pets
@@ -444,22 +446,26 @@ function PetFunctions.updatePetCount()
     local selectedCount = 0
     local excludedCount = 0
     
-    -- Get these variables from the main script's scope
-    local mainSelectedPets = PetFunctions.getSelectedPets and PetFunctions.getSelectedPets() or {}
-    local mainExcludedPets = PetFunctions.getExcludedPets and PetFunctions.getExcludedPets() or {}
-    local mainAllPetsSelected = PetFunctions.getAllPetsSelected and PetFunctions.getAllPetsSelected() or false
+    -- Get these variables from the main script's scope, using helper functions if available
+    local mainSelectedPets = PetFunctions.getSelectedPets and PetFunctions.getSelectedPets() or selectedPets or {}
+    local mainExcludedPets = PetFunctions.getExcludedPets and PetFunctions.getExcludedPets() or excludedPets or {}
+    local mainAllPetsSelected = PetFunctions.getAllPetsSelected and PetFunctions.getAllPetsSelected() or allPetsSelected or false
     
     -- Count excluded pets first
     for petId, _ in pairs(mainExcludedPets) do
         excludedCount = excludedCount + 1
     end
     
-    -- Calculate selected count
+    -- Calculate selected count properly
     if mainAllPetsSelected then
+        -- If all pets are selected, count all pets minus excluded ones
         selectedCount = #pets - excludedCount
     else
+        -- Count only specifically selected pets that aren't excluded
         for petId, _ in pairs(mainSelectedPets) do
-            selectedCount = selectedCount + 1
+            if not mainExcludedPets[petId] then
+                selectedCount = selectedCount + 1
+            end
         end
     end
     
@@ -480,6 +486,10 @@ function PetFunctions.updatePetCount()
                 label.Text = labelText
             elseif label.Label then
                 label.Label = labelText
+            elseif label.setValue then
+                label:setValue(labelText)
+            elseif label.setText then
+                label:setText(labelText)
             else
                 -- Try to find a property that might work
                 for propertyName, propertyValue in pairs(label) do
@@ -497,7 +507,7 @@ function PetFunctions.updatePetCount()
     end
 end
 
--- Additional helper functions that should be added to PetFunctions:
+-- Helper functions for managing pet selection state
 function PetFunctions.getSelectedPets()
     return selectedPets or {}
 end
@@ -512,41 +522,79 @@ end
 
 function PetFunctions.setSelectedPets(pets)
     selectedPets = pets
+    PetFunctions.updatePetCount() -- Update count when pets change
 end
 
 function PetFunctions.setExcludedPets(pets)
     excludedPets = pets
+    PetFunctions.updatePetCount() -- Update count when exclusions change
 end
 
 function PetFunctions.setAllPetsSelected(value)
     allPetsSelected = value
+    PetFunctions.updatePetCount() -- Update count when all-selected state changes
 end
 
 function PetFunctions.setPetCountLabel(label)
     PetFunctions.petCountLabel = label
+    PetFunctions.updatePetCount() -- Update immediately when label is set
 end
 
--- Helper functions for external use
+-- Additional helper function to select individual pets
+function PetFunctions.selectPet(petId)
+    if not selectedPets then
+        selectedPets = {}
+    end
+    selectedPets[petId] = true
+    allPetsSelected = false -- Individual selection means not all are selected
+    PetFunctions.updatePetCount()
+end
+
+-- Function to deselect individual pets
+function PetFunctions.deselectPet(petId)
+    if selectedPets then
+        selectedPets[petId] = nil
+    end
+    allPetsSelected = false
+    PetFunctions.updatePetCount()
+end
+
+-- Function to exclude pets
+function PetFunctions.excludePet(petId)
+    if not excludedPets then
+        excludedPets = {}
+    end
+    excludedPets[petId] = true
+    -- Remove from selected if it was selected
+    if selectedPets then
+        selectedPets[petId] = nil
+    end
+    PetFunctions.updatePetCount()
+end
+
+-- Helper functions for managing pet exclusions
 function PetFunctions.isPetExcluded(petId)
-    return excludedPets[petId] == true
+    local mainExcludedPets = excludedPets or {}
+    return mainExcludedPets[petId] == true
 end
 
 function PetFunctions.getExcludedPetCount()
+    local mainExcludedPets = excludedPets or {}
     local count = 0
-    for _ in pairs(excludedPets) do
+    for _ in pairs(mainExcludedPets) do
         count = count + 1
     end
     return count
 end
 
 function PetFunctions.getExcludedPetIds()
+    local mainExcludedPets = excludedPets or {}
     local ids = {}
-    for petId, _ in pairs(excludedPets) do
+    for petId, _ in pairs(mainExcludedPets) do
         table.insert(ids, petId)
     end
     return ids
 end
-
 -- Getters and Setters
 function PetFunctions.setAutoMiddleEnabled(enabled)
     autoMiddleEnabled = enabled
