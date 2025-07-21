@@ -417,12 +417,21 @@ function PetFunctions.updateDropdownOptions()
     local pets = PetFunctions.getAllPets()
     currentPetsList = {}
     local dropdownOptions = {"None"}
+    local petTypeGroups = {}
     
+    -- Group pets by their type
     for i, pet in pairs(pets) do
-        local shortId = string.sub(tostring(pet.id), 1, 8)
-        local displayName = pet.name .. " (" .. shortId .. "...)"
-        table.insert(dropdownOptions, displayName)
-        currentPetsList[displayName] = pet
+        local petType = pet.name
+        if not petTypeGroups[petType] then
+            petTypeGroups[petType] = {}
+        end
+        table.insert(petTypeGroups[petType], pet)
+    end
+    
+    -- Create dropdown options with grouped pets
+    for petType, petGroup in pairs(petTypeGroups) do
+        table.insert(dropdownOptions, petType)
+        currentPetsList[petType] = petGroup -- Store the entire group
     end
     
     -- Update the dropdown options
