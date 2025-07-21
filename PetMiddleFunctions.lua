@@ -23,7 +23,8 @@ local PetZoneAbility = ReplicatedStorage.GameEvents.PetZoneAbility
 local Notification = ReplicatedStorage.GameEvents.Notification
 
 -- Pet Control Variables
-local petsFolder = nil
+local activePetUI = nil
+local scrollingFrame = nil
 local selectedPets = {}
 local excludedPets = {}
 local excludedPetESPs = {}
@@ -46,24 +47,54 @@ function PetFunctions.isValidUUID(str)
     return string.match(str, "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
--- Function to find pets folder
-function PetFunctions.findPetsFolder()
-    local possiblePaths = {"PetsPhysical", "Active Pets", "Pets", "ActivePets", "PetModels"}
-    
-    for _, path in pairs(possiblePaths) do
-        local folder = Workspace:FindFirstChild(path)
-        if folder then return folder end
-    end
-    
+-- Function to initialize ActivePetUI references
+function PetFunctions.initializeActivePetUI()
     local player = Players.LocalPlayer
-    if player and player.Character then
-        for _, path in pairs(possiblePaths) do
-            local folder = player.Character:FindFirstChild(path)
-            if folder then return folder end
+    if not player then return false end
+    
+    local playerGui = player:WaitForChild("PlayerGui", 5)
+    if not playerGui then return false end
+    
+    activePetUI = playerGui:WaitForChild("ActivePetUI", 5)
+    if not activePetUI then return false end
+    
+    local frame = activePetUI:WaitForChild("Frame", 2)
+    if not frame then return false end
+    
+    local main = frame:WaitForChild("Main", 2)
+    if not main then return false end
+    
+    scrollingFrame = main:WaitForChild("ScrollingFrame", 2)
+    if not scrollingFrame then return false end
+    
+    return true
+end
+
+-- Function to find pet mover in workspace by UUID
+function PetFunctions.findPetMoverByUUID(uuid)
+    -- Remove curly braces for comparison
+    local cleanUUID = string.gsub(uuid, "[{}]", "")
+    
+    -- Search through workspace for pet movers
+    local function searchInFolder(folder)
+        for _, child in pairs(folder:GetChildren()) do
+            if child:IsA("Part") and child.Name == "PetMover" then
+                local petId = PetFunctions.getPetIdFromPetMover(child)
+                if petId then
+                    local cleanPetId = string.gsub(tostring(petId), "[{}]", "")
+                    if cleanPetId == cleanUUID then
+                        return child
+                    end
+                end
+            elseif child:IsA("Model") or child:IsA("Folder") then
+                local result = searchInFolder(child)
+                if result then return result end
+            end
         end
+        return nil
     end
     
-    return nil
+    return searchInFolder(Workspace)
 end
 
 -- Function to get pet ID from PetMover
@@ -93,6 +124,8 @@ function PetFunctions.createESPMarker(pet)
     if excludedPetESPs[pet.id] then
         return -- ESP already exists
     end
+    
+    if not pet.mover then return end
     
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ExcludedPetESP"
@@ -130,69 +163,43 @@ function PetFunctions.removeESPMarker(petId)
     end
 end
 
--- Function to get all pets
+-- Function to get all pets from ActivePetUI
 function PetFunctions.getAllPets()
     local pets = {}
     
-    local function processPetContainer(container)
-        local petMover = container:FindFirstChild("PetMover")
-        if petMover and petMover:IsA("BasePart") then
-            local petId = PetFunctions.getPetIdFromPetMover(petMover)
-            if petId then
-                table.insert(pets, {
-                    id = petId,
-                    name = "Pet",
-                    model = container,
-                    mover = petMover,
-                    position = petMover.Position
-                })
-            end
+    if not scrollingFrame then
+        if not PetFunctions.initializeActivePetUI() then
+            return pets
         end
     end
     
-    local function findStandalonePetMovers(parent)
-        for _, child in pairs(parent:GetChildren()) do
-            if child:IsA("Part") and child.Name == "PetMover" then
-                local petId = PetFunctions.getPetIdFromPetMover(child)
-                if petId then
-                    table.insert(pets, {
-                        id = petId,
-                        name = "Pet",
-                        model = child.Parent,
-                        mover = child,
-                        position = child.Position
-                    })
-                end
-            elseif child:IsA("Model") or child:IsA("Folder") then
-                findStandalonePetMovers(child)
+    -- Iterate through children of ScrollingFrame
+    for _, child in pairs(scrollingFrame:GetChildren()) do
+        if child:IsA("Frame") and PetFunctions.isValidUUID(child.Name) then
+            local uuid = child.Name
+            local petType = "Pet" -- Default type
+            
+            -- Try to get pet type from PET_TYPE child
+            local petTypeChild = child:FindFirstChild("PET_TYPE")
+            if petTypeChild and petTypeChild:IsA("TextLabel") then
+                petType = petTypeChild.Text or "Pet"
             end
+            
+            -- Find the corresponding PetMover in workspace
+            local petMover = PetFunctions.findPetMoverByUUID(uuid)
+            
+            -- Create pet entry
+            local petEntry = {
+                id = uuid,
+                name = petType,
+                model = child, -- UI element
+                mover = petMover, -- Physical part in workspace
+                position = petMover and petMover.Position or Vector3.new(0, 0, 0)
+            }
+            
+            table.insert(pets, petEntry)
         end
     end
-    
-    if not petsFolder then
-        petsFolder = PetFunctions.findPetsFolder()
-    end
-    
-    if petsFolder then
-        if petsFolder.Name == "PetsPhysical" then
-            local petMoverFolder = petsFolder:FindFirstChild("PetMover")
-            if petMoverFolder then
-                for _, petContainer in pairs(petMoverFolder:GetChildren()) do
-                    if petContainer:IsA("Model") and PetFunctions.isValidUUID(petContainer.Name) then
-                        processPetContainer(petContainer)
-                    end
-                end
-            end
-        else
-            for _, child in pairs(petsFolder:GetChildren()) do
-                if child:IsA("Model") then
-                    processPetContainer(child)
-                end
-            end
-        end
-    end
-    
-    findStandalonePetMovers(Workspace)
     
     return pets
 end
@@ -259,9 +266,12 @@ function PetFunctions.runAutoMiddleLoop()
         -- Skip excluded pets
         if not excludedPets[pet.id] then
             if allPetsSelected or selectedPets[pet.id] then
-                local distance = (pet.mover.Position - farmCenterPoint).Magnitude
-                if distance > RADIUS then
-                    PetFunctions.setPetState(pet.id, "Idle")
+                -- Only process if we have a physical mover
+                if pet.mover then
+                    local distance = (pet.mover.Position - farmCenterPoint).Magnitude
+                    if distance > RADIUS then
+                        PetFunctions.setPetState(pet.id, "Idle")
+                    end
                 end
             end
         end
@@ -410,7 +420,7 @@ function PetFunctions.updateDropdownOptions()
     
     for i, pet in pairs(pets) do
         local shortId = string.sub(tostring(pet.id), 1, 8)
-        local displayName = "Pet (" .. shortId .. "...)"
+        local displayName = pet.name .. " (" .. shortId .. "...)"
         table.insert(dropdownOptions, displayName)
         currentPetsList[displayName] = pet
     end
@@ -425,7 +435,8 @@ end
 function PetFunctions.refreshPets()
     selectedPets = {}
     allPetsSelected = false
-    petsFolder = PetFunctions.findPetsFolder()
+    -- Re-initialize ActivePetUI references
+    PetFunctions.initializeActivePetUI()
     local pets = PetFunctions.getAllPets()
     PetFunctions.updateDropdownOptions()
     return pets
@@ -538,6 +549,7 @@ end
 -- Initialize the system with auto refresh
 task.spawn(function()
     task.wait(1) -- Wait a moment for everything to load
+    PetFunctions.initializeActivePetUI()
     PetFunctions.refreshPets()
 end)
 
