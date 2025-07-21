@@ -24,33 +24,6 @@ local sprinklerTypes = {
 }
 local selectedSprinklers = {}
 
-local zenItems = {
-    "Zen Seed Pack",
-    "Zen Egg",
-    "Hot Spring",
-    "Zen Flare",
-    "Zen Crate",
-    "Soft Sunshine",
-    "Koi",
-    "Zen Gnome Crate",
-    "Spiked Mango",
-    "Pet Shard Tranquil",
-    "Zen Sand"
-}
-
-local merchantItems = {
-    "Star Caller",
-    "Night Staff",
-    "Bee Egg",
-    "Honey Sprinkler",
-    "Flower Seed Pack",
-    "Cloudtouched Spray",
-    "Mutation Spray Disco",
-    "Mutation Spray Verdant",
-    "Mutation Spray Windstruck",
-    "Mutation Spray Wet"
-}
-
 -- Pet Control Variables
 local selectedPets = {}
 local excludedPets = {}
@@ -58,12 +31,6 @@ local excludedPetESPs = {}
 local allPetsSelected = false
 local petsFolder = nil
 local currentPetsList = {}
-
--- Auto-buy states
-local autoBuyZenEnabled = false
-local autoBuyMerchantEnabled = false
-local zenBuyConnection = nil
-local merchantBuyConnection = nil
 
 -- Remote Events with error handling
 local function getRemoteEvent(path)
@@ -73,8 +40,6 @@ local function getRemoteEvent(path)
     return success and result or nil
 end
 
-local BuyEventShopStock = getRemoteEvent("GameEvents") and getRemoteEvent("GameEvents").BuyEventShopStock
-local BuyTravelingMerchantShopStock = getRemoteEvent("GameEvents") and getRemoteEvent("GameEvents").BuyTravelingMerchantShopStock
 local DeleteObject = getRemoteEvent("GameEvents") and getRemoteEvent("GameEvents").DeleteObject
 local RemoveItem = getRemoteEvent("GameEvents") and getRemoteEvent("GameEvents").Remove_Item
 local ActivePetService = getRemoteEvent("GameEvents") and getRemoteEvent("GameEvents").ActivePetService
@@ -97,65 +62,6 @@ end)
 pcall(function()
     objectsFolder = Workspace:WaitForChild("Farm", 5):WaitForChild("Farm", 5):WaitForChild("Important", 5):WaitForChild("Objects_Physical", 5)
 end)
-
--- Auto-buy functions with proper connection management
-function Functions.toggleAutoBuyZen(enabled)
-    autoBuyZenEnabled = enabled
-    
-    if enabled then
-        if zenBuyConnection then zenBuyConnection:Disconnect() end
-        zenBuyConnection = RunService.Heartbeat:Connect(function()
-            if autoBuyZenEnabled then
-                Functions.buyAllZenItems()
-                task.wait(1) -- Prevent spam
-            end
-        end)
-    else
-        if zenBuyConnection then
-            zenBuyConnection:Disconnect()
-            zenBuyConnection = nil
-        end
-    end
-end
-
-function Functions.toggleAutoBuyMerchant(enabled)
-    autoBuyMerchantEnabled = enabled
-    
-    if enabled then
-        if merchantBuyConnection then merchantBuyConnection:Disconnect() end
-        merchantBuyConnection = RunService.Heartbeat:Connect(function()
-            if autoBuyMerchantEnabled then
-                Functions.buyAllMerchantItems()
-                task.wait(1) -- Prevent spam
-            end
-        end)
-    else
-        if merchantBuyConnection then
-            merchantBuyConnection:Disconnect()
-            merchantBuyConnection = nil
-        end
-    end
-end
-
--- Function to buy all zen items
-function Functions.buyAllZenItems()
-    if not BuyEventShopStock then return end
-    for _, item in pairs(zenItems) do
-        pcall(function()
-            BuyEventShopStock:FireServer(item)
-        end)
-    end
-end
-
--- Function to buy all merchant items
-function Functions.buyAllMerchantItems()
-    if not BuyTravelingMerchantShopStock then return end
-    for _, item in pairs(merchantItems) do
-        pcall(function()
-            BuyTravelingMerchantShopStock:FireServer(item)
-        end)
-    end
-end
 
 -- Equip Shovel function
 function Functions.autoEquipShovel()
