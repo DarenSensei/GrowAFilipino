@@ -399,7 +399,7 @@ Tab:AddButton({
 })
 
 Tab:AddSection({Name = "-PET EXPLOIT-"})
-Tab:AddParagraph({"How to use :", "Refresh Pets > Choose Exclude Pets has an X Marker in it > Auto Middle Pets"})
+Tab:AddParagraph("How to use :", "Refresh Pets > Choose Exclude Pets, ones has an X Marker in it > Auto Middle Pets")
 -- Pet exclusion dropdown
 petDropdown = Tab:AddDropdown({
     Name = "Select Pets to Exclude",
