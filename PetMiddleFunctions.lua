@@ -51,22 +51,22 @@ end
 function PetFunctions.initializeActivePetUI()
     local player = Players.LocalPlayer
     if not player then return false end
-    
+
     local playerGui = player:WaitForChild("PlayerGui", 5)
     if not playerGui then return false end
-    
+
     activePetUI = playerGui:WaitForChild("ActivePetUI", 5)
     if not activePetUI then return false end
-    
+
     local frame = activePetUI:WaitForChild("Frame", 2)
     if not frame then return false end
-    
+
     local main = frame:WaitForChild("Main", 2)
     if not main then return false end
-    
+
     scrollingFrame = main:WaitForChild("ScrollingFrame", 2)
     if not scrollingFrame then return false end
-    
+
     return true
 end
 
@@ -74,7 +74,7 @@ end
 function PetFunctions.findPetMoverByUUID(uuid)
     -- Remove curly braces for comparison
     local cleanUUID = string.gsub(uuid, "[{}]", "")
-    
+
     -- Search through workspace for pet movers
     local function searchInFolder(folder)
         for _, child in pairs(folder:GetChildren()) do
@@ -93,29 +93,29 @@ function PetFunctions.findPetMoverByUUID(uuid)
         end
         return nil
     end
-    
+
     return searchInFolder(Workspace)
 end
 
 -- Function to get pet ID from PetMover
 function PetFunctions.getPetIdFromPetMover(petMover)
     if not petMover then return nil end
-    
+
     local petId = petMover:GetAttribute("PetId") or 
                  petMover:GetAttribute("Id") or 
                  petMover:GetAttribute("UUID") or
                  petMover:GetAttribute("petId")
-    
+
     if petId then return petId end
-    
+
     if petMover.Parent and PetFunctions.isValidUUID(petMover.Parent.Name) then
         return petMover.Parent.Name
     end
-    
+
     if PetFunctions.isValidUUID(petMover.Name) then
         return petMover.Name
     end
-    
+
     return petMover:GetFullName()
 end
 
@@ -124,9 +124,9 @@ function PetFunctions.createESPMarker(pet)
     if excludedPetESPs[pet.id] then
         return -- ESP already exists
     end
-    
+
     if not pet.mover then return end
-    
+
     local billboard = Instance.new("BillboardGui")
     billboard.Name = "ExcludedPetESP"
     billboard.Adornee = pet.mover
@@ -134,12 +134,12 @@ function PetFunctions.createESPMarker(pet)
     billboard.StudsOffset = Vector3.new(0, 2, 0)
     billboard.LightInfluence = 0
     billboard.AlwaysOnTop = true
-    
+
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
     frame.BackgroundTransparency = 1
     frame.Parent = billboard
-    
+
     local textLabel = Instance.new("TextLabel")
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
@@ -150,7 +150,7 @@ function PetFunctions.createESPMarker(pet)
     textLabel.TextStrokeTransparency = 0
     textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     textLabel.Parent = frame
-    
+
     billboard.Parent = pet.mover
     excludedPetESPs[pet.id] = billboard
 end
@@ -166,28 +166,28 @@ end
 -- Function to get all pets from ActivePetUI
 function PetFunctions.getAllPets()
     local pets = {}
-    
+
     if not scrollingFrame then
         if not PetFunctions.initializeActivePetUI() then
             return pets
         end
     end
-    
+
     -- Iterate through children of ScrollingFrame
     for _, child in pairs(scrollingFrame:GetChildren()) do
         if child:IsA("Frame") and PetFunctions.isValidUUID(child.Name) then
             local uuid = child.Name
             local petType = "Pet" -- Default type
-            
+
             -- Try to get pet type from PET_TYPE child
             local petTypeChild = child:FindFirstChild("PET_TYPE")
             if petTypeChild and petTypeChild:IsA("TextLabel") then
                 petType = petTypeChild.Text or "Pet"
             end
-            
+
             -- Find the corresponding PetMover in workspace
             local petMover = PetFunctions.findPetMoverByUUID(uuid)
-            
+
             -- Create pet entry
             local petEntry = {
                 id = uuid,
@@ -196,11 +196,11 @@ function PetFunctions.getAllPets()
                 mover = petMover, -- Physical part in workspace
                 position = petMover and petMover.Position or Vector3.new(0, 0, 0)
             }
-            
+
             table.insert(pets, petEntry)
         end
     end
-    
+
     return pets
 end
 
@@ -210,14 +210,14 @@ function PetFunctions.getFarmCenterPoint()
     if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
         return nil
     end
-    
+
     local playerPosition = player.Character.HumanoidRootPart.Position
     local farmFolder = Workspace:FindFirstChild("Farm")
-    
+
     if farmFolder then
         local closestFarm = nil
         local closestDistance = math.huge
-        
+
         for _, farm in pairs(farmFolder:GetChildren()) do
             local centerPoint = farm:FindFirstChild("Center_Point")
             if centerPoint then
@@ -228,10 +228,10 @@ function PetFunctions.getFarmCenterPoint()
                 end
             end
         end
-        
+
         return closestFarm
     end
-    
+
     return playerPosition
 end
 
@@ -240,7 +240,7 @@ function PetFunctions.formatPetIdToUUID(petId)
     if string.match(petId, "^{%x+%-%x+%-%x+%-%x+%-%x+}$") then
         return petId
     end
-    
+
     petId = string.gsub(petId, "[{}]", "")
     return "{" .. petId .. "}"
 end
@@ -256,22 +256,26 @@ end
 -- Function to run the auto middle loop
 function PetFunctions.runAutoMiddleLoop()
     if not autoMiddleEnabled then return end
-    
+
     local pets = PetFunctions.getAllPets()
     local farmCenterPoint = PetFunctions.getFarmCenterPoint()
-    
+
     if not farmCenterPoint then return end
-    
+
     for _, pet in pairs(pets) do
-        -- Skip excluded pets
-        if not excludedPets[pet.id] then
-            if allPetsSelected or selectedPets[pet.id] then
-                -- Only process if we have a physical mover
-                if pet.mover then
-                    local distance = (pet.mover.Position - farmCenterPoint).Magnitude
-                    if distance > RADIUS then
-                        PetFunctions.setPetState(pet.id, "Idle")
-                    end
+        -- Check if pet is excluded FIRST
+        if PetFunctions.isPetExcluded(pet.id) then
+            -- Skip excluded pets completely
+            continue
+        end
+        
+        -- Only process pets that are selected (either individually or through "all pets")
+        if allPetsSelected or selectedPets[pet.id] then
+            -- Only process if we have a physical mover
+            if pet.mover then
+                local distance = (pet.mover.Position - farmCenterPoint).Magnitude
+                if distance > RADIUS then
+                    PetFunctions.setPetState(pet.id, "Idle")
                 end
             end
         end
@@ -283,7 +287,7 @@ function PetFunctions.startLoop()
     if autoMiddleConnection then
         autoMiddleConnection:Disconnect()
     end
-    
+
     isLooping = true
     autoMiddleConnection = RunService.Heartbeat:Connect(function()
         if not isLooping then return end
@@ -304,13 +308,13 @@ end
 -- Function to start initial loop
 function PetFunctions.startInitialLoop()
     if not autoMiddleEnabled then return end
-    
+
     PetFunctions.startLoop()
-    
+
     if loopTimer then
         task.cancel(loopTimer)
     end
-    
+
     loopTimer = task.spawn(function()
         task.wait(INITIAL_LOOP_TIME)
         if autoMiddleEnabled then
@@ -322,14 +326,14 @@ end
 -- Function to handle PetZoneAbility detection
 function PetFunctions.onPetZoneAbility()
     if not autoMiddleEnabled then return end
-    
+
     -- Update the last zone ability time
     lastZoneAbilityTime = tick()
-    
+
     if delayTimer then
         task.cancel(delayTimer)
     end
-    
+
     delayTimer = task.spawn(function()
         task.wait(ZONE_ABILITY_DELAY)
         if autoMiddleEnabled then
@@ -345,7 +349,7 @@ end
 -- Function to handle Notification signal detection
 function PetFunctions.onNotificationSignal()
     if not autoMiddleEnabled then return end
-    
+
     -- Run the loop when notification signal is detected
     PetFunctions.startLoop()
     task.wait(INITIAL_LOOP_TIME)
@@ -373,17 +377,17 @@ end
 -- Function to cleanup all timers and connections
 function PetFunctions.cleanup()
     PetFunctions.stopLoop()
-    
+
     if zoneAbilityConnection then
         zoneAbilityConnection:Disconnect()
         zoneAbilityConnection = nil
     end
-    
+
     if notificationConnection then
         notificationConnection:Disconnect()
         notificationConnection = nil
     end
-    
+
     if loopTimer then
         task.cancel(loopTimer)
         loopTimer = nil
@@ -392,7 +396,7 @@ function PetFunctions.cleanup()
         task.cancel(delayTimer)
         delayTimer = nil
     end
-    
+
     -- Clean up ESP markers
     for petId, esp in pairs(excludedPetESPs) do
         if esp then
@@ -408,7 +412,10 @@ function PetFunctions.selectAllPets()
     allPetsSelected = true
     local pets = PetFunctions.getAllPets()
     for _, pet in pairs(pets) do
-        selectedPets[pet.id] = true
+        -- Don't select excluded pets
+        if not PetFunctions.isPetExcluded(pet.id) then
+            selectedPets[pet.id] = true
+        end
     end
 end
 
@@ -418,7 +425,7 @@ function PetFunctions.updateDropdownOptions()
     currentPetsList = {}
     local dropdownOptions = {"None"}
     local petTypeGroups = {}
-    
+
     -- Group pets by their type
     for i, pet in pairs(pets) do
         local petType = pet.name
@@ -427,28 +434,58 @@ function PetFunctions.updateDropdownOptions()
         end
         table.insert(petTypeGroups[petType], pet)
     end
-    
+
     -- Create dropdown options with grouped pets
     for petType, petGroup in pairs(petTypeGroups) do
         table.insert(dropdownOptions, petType)
         currentPetsList[petType] = petGroup -- Store the entire group
     end
-    
+
     -- Update the dropdown options
     if petDropdown and petDropdown.Refresh then
         petDropdown:Refresh(dropdownOptions, true)
     end
 end
 
--- Function to refresh pets
+-- Function to refresh pets and update ESP markers
 function PetFunctions.refreshPets()
     selectedPets = {}
     allPetsSelected = false
     -- Re-initialize ActivePetUI references
     PetFunctions.initializeActivePetUI()
     local pets = PetFunctions.getAllPets()
+    
+    -- Update ESP markers for excluded pets
+    PetFunctions.updateExcludedPetESPs()
+    
     PetFunctions.updateDropdownOptions()
     return pets
+end
+
+-- Function to update ESP markers for all excluded pets
+function PetFunctions.updateExcludedPetESPs()
+    local pets = PetFunctions.getAllPets()
+    
+    -- Remove old ESP markers that no longer have corresponding pets
+    for petId, esp in pairs(excludedPetESPs) do
+        local petExists = false
+        for _, pet in pairs(pets) do
+            if pet.id == petId then
+                petExists = true
+                break
+            end
+        end
+        if not petExists then
+            PetFunctions.removeESPMarker(petId)
+        end
+    end
+    
+    -- Add ESP markers for excluded pets
+    for _, pet in pairs(pets) do
+        if PetFunctions.isPetExcluded(pet.id) then
+            PetFunctions.createESPMarker(pet)
+        end
+    end
 end
 
 -- Helper functions for managing pet selection state
@@ -470,6 +507,8 @@ end
 
 function PetFunctions.setExcludedPets(pets)
     excludedPets = pets
+    -- Update ESP markers when excluded pets change
+    PetFunctions.updateExcludedPetESPs()
 end
 
 function PetFunctions.setAllPetsSelected(value)
@@ -481,8 +520,12 @@ function PetFunctions.selectPet(petId)
     if not selectedPets then
         selectedPets = {}
     end
-    selectedPets[petId] = true
-    allPetsSelected = false -- Individual selection means not all are selected
+    
+    -- Don't select excluded pets
+    if not PetFunctions.isPetExcluded(petId) then
+        selectedPets[petId] = true
+        allPetsSelected = false -- Individual selection means not all are selected
+    end
 end
 
 -- Function to deselect individual pets
@@ -498,10 +541,41 @@ function PetFunctions.excludePet(petId)
     if not excludedPets then
         excludedPets = {}
     end
+    
     excludedPets[petId] = true
+    
     -- Remove from selected if it was selected
     if selectedPets then
         selectedPets[petId] = nil
+    end
+    
+    -- Create ESP marker for this excluded pet
+    local pets = PetFunctions.getAllPets()
+    for _, pet in pairs(pets) do
+        if pet.id == petId then
+            PetFunctions.createESPMarker(pet)
+            break
+        end
+    end
+    
+    -- If all pets were selected, we need to update the selection
+    if allPetsSelected then
+        PetFunctions.selectAllPets() -- This will re-select all non-excluded pets
+    end
+end
+
+-- Function to unexclude pets
+function PetFunctions.unexcludePet(petId)
+    if excludedPets then
+        excludedPets[petId] = nil
+    end
+    
+    -- Remove ESP marker
+    PetFunctions.removeESPMarker(petId)
+    
+    -- If all pets mode is on, select this pet too
+    if allPetsSelected then
+        selectedPets[petId] = true
     end
 end
 
@@ -570,5 +644,7 @@ _G.refreshPets = PetFunctions.refreshPets
 _G.isPetExcluded = PetFunctions.isPetExcluded
 _G.getExcludedPetCount = PetFunctions.getExcludedPetCount
 _G.getExcludedPetIds = PetFunctions.getExcludedPetIds
+_G.excludePet = PetFunctions.excludePet
+_G.unexcludePet = PetFunctions.unexcludePet
 
 return PetFunctions
