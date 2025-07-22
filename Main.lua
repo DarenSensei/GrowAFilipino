@@ -933,6 +933,7 @@ MiscTab:Toggle({
     Icon = "monitor",
     Value = false,
     Callback = function(value)
+            if Misc and Misc.toggleBlackScreen == "function" then
         Misc.toggleBlackScreen(value)
     end
 })
