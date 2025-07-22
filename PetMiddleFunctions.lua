@@ -1,5 +1,5 @@
--- Pet Control Functions Module (Fixed Version)
--- This module contains all pet-related functionality with improved reliability
+-- Pet Control Functions Module (FIXED)
+-- This module contains all pet-related functionality
 
 local PetFunctions = {}
 
@@ -9,14 +9,15 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
--- Pet Radius Control Configuration
-local RADIUS = 5 -- Increased radius for better positioning
-local LOOP_DELAY = 0.5 -- Reduced for more responsive checking
+-- Pet Radius Control Configuration (IMPROVED)
+local RADIUS = 5 -- Changed to 5 studs
+local MAX_FORCE_DISTANCE = 10 -- Only force pets within 10 studs to center
+local LOOP_DELAY = 0.1 -- Much faster loop for better responsiveness
 local INITIAL_LOOP_TIME = 5
-local ZONE_ABILITY_DELAY = 3
+local ZONE_ABILITY_DELAY = 0.5 -- Faster response to zone abilities
 local ZONE_ABILITY_LOOP_TIME = 3
 local AUTO_LOOP_INTERVAL = 240 -- 4 minutes in seconds
-local MAX_DISTANCE_FROM_FARM = 10 -- Maximum allowed distance before forcing repositioning
+local CONTINUOUS_CHECK_INTERVAL = 1 -- Check every second for pets out of position
 
 -- Pet Control Services
 local ActivePetService = ReplicatedStorage.GameEvents.ActivePetService
@@ -31,6 +32,7 @@ local includedPets = {}
 local allPetsSelected = false
 local autoMiddleEnabled = false
 local autoMiddleConnection = nil
+local continuousCheckConnection = nil -- NEW: For continuous monitoring
 local zoneAbilityConnection = nil
 local notificationConnection = nil
 local loopTimer = nil
@@ -39,8 +41,8 @@ local isLooping = false
 local petDropdown = nil
 local currentPetsList = {}
 local lastZoneAbilityTime = 0 -- Track last zone ability time
-local lastFarmCenterPoint = nil -- Cache the farm center point
-local petStates = {} -- Track individual pet states
+local lastCenterPoint = nil -- Cache center point for better performance
+local centerPointUpdateTime = 0 -- When center point was last updated
 
 -- Function to check if string is UUID format
 function PetFunctions.isValidUUID(str)
@@ -162,43 +164,49 @@ function PetFunctions.getAllPets()
     return pets
 end
 
--- Function to get farm center point using GetFarm module
+-- Function to get farm center point (IMPROVED with caching)
 function PetFunctions.getFarmCenterPoint()
+    local currentTime = tick()
+    
+    -- Use cached center point if it's recent (within 2 seconds)
+    if lastCenterPoint and (currentTime - centerPointUpdateTime) < 2 then
+        return lastCenterPoint
+    end
+
     local player = Players.LocalPlayer
     if not player or not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        return lastFarmCenterPoint -- Return cached point if player not available
+        return lastCenterPoint -- Return cached point if player not available
     end
 
-    local success, farmData = pcall(function()
-        local GetFarm = require(ReplicatedStorage.Modules.GetFarm)
-        return GetFarm()
-    end)
-
-    if success and farmData then
-        local farmPosition = nil
-        
-        -- Check different possible return formats
-        if farmData.Position then
-            farmPosition = farmData.Position
-        elseif farmData.CFrame then
-            farmPosition = farmData.CFrame.Position
-        elseif farmData.Center_Point then
-            farmPosition = farmData.Center_Point.Position or farmData.Center_Point
-        elseif typeof(farmData) == "Vector3" then
-            farmPosition = farmData
-        elseif typeof(farmData) == "CFrame" then
-            farmPosition = farmData.Position
-        end
-        
-        if farmPosition then
-            lastFarmCenterPoint = farmPosition -- Cache the result
-            return farmPosition
-        end
-    end
-
-    -- Fallback to cached point or player position
     local playerPosition = player.Character.HumanoidRootPart.Position
-    return lastFarmCenterPoint or playerPosition
+    local farmFolder = Workspace:FindFirstChild("Farm")
+
+    if farmFolder then
+        local closestFarm = nil
+        local closestDistance = math.huge
+
+        for _, farm in pairs(farmFolder:GetChildren()) do
+            local centerPoint = farm:FindFirstChild("Center_Point")
+            if centerPoint then
+                local distance = (playerPosition - centerPoint.Position).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestFarm = centerPoint.Position
+                end
+            end
+        end
+
+        if closestFarm then
+            lastCenterPoint = closestFarm
+            centerPointUpdateTime = currentTime
+            return closestFarm
+        end
+    end
+
+    -- Fallback to player position
+    lastCenterPoint = playerPosition
+    centerPointUpdateTime = currentTime
+    return playerPosition
 end
 
 -- Function to format pet ID to UUID format
@@ -211,75 +219,62 @@ function PetFunctions.formatPetIdToUUID(petId)
     return "{" .. petId .. "}"
 end
 
--- Function to set pet state with error handling and state tracking
+-- Function to set pet state (IMPROVED with error handling)
 function PetFunctions.setPetState(petId, state)
     local formattedPetId = PetFunctions.formatPetIdToUUID(petId)
-    
-    -- Track the state we're trying to set
-    petStates[petId] = {
-        targetState = state,
-        timestamp = tick()
-    }
-    
     local success, error = pcall(function()
         ActivePetService:FireServer("SetPetState", formattedPetId, state)
     end)
     
     if not success then
         warn("Failed to set pet state for " .. tostring(petId) .. ": " .. tostring(error))
-        -- Clear the state tracking on failure
-        petStates[petId] = nil
     end
-    
-    return success
 end
 
--- Function to force pet to center using auto middle built-in
-function PetFunctions.forcePetToCenter(petId, farmCenterPoint)
-    local formattedPetId = PetFunctions.formatPetIdToUUID(petId)
-    
-    -- Use auto middle built-in functionality
-    local success1 = pcall(function()
-        ActivePetService:FireServer("AutoMiddle", formattedPetId)
-    end)
-    
-    if not success1 then
-        -- Fallback methods if AutoMiddle doesn't work
-        local methods = {
-            function() return PetFunctions.setPetState(petId, "Idle") end,
-            function() return PetFunctions.setPetState(petId, "Follow") end,
-            function() 
-                -- Try direct positioning if available
-                pcall(function()
-                    ActivePetService:FireServer("MovePetToPosition", formattedPetId, farmCenterPoint)
-                end)
-                return true
-            end
-        }
+-- NEW: Function to force pets to center immediately (with max distance check)
+function PetFunctions.forcePetsToCenter()
+    local pets = PetFunctions.getAllPets()
+    local farmCenterPoint = PetFunctions.getFarmCenterPoint()
+
+    if not farmCenterPoint then return end
+
+    for _, pet in pairs(pets) do
+        -- Check if pet should be included in middle function
+        local shouldInclude = false
         
-        for _, method in ipairs(methods) do
-            if method() then
-                task.wait(0.1) -- Small delay between attempts
-                break -- Exit after first successful method
+        if allPetsSelected then
+            shouldInclude = true
+        elseif PetFunctions.isPetIncluded(pet.id) then
+            shouldInclude = true
+        elseif selectedPets[pet.id] then
+            shouldInclude = true
+        end
+
+        -- Only process pets that should be included and are within max force distance
+        if shouldInclude and pet.mover then
+            local distance = (pet.mover.Position - farmCenterPoint).Magnitude
+            -- Only force pets that are within MAX_FORCE_DISTANCE
+            if distance <= MAX_FORCE_DISTANCE then
+                -- Force pet to idle state to make it go to center
+                PetFunctions.setPetState(pet.id, "Idle")
+                -- Small delay to ensure the command is processed
+                task.wait(0.01)
             end
         end
     end
 end
 
--- Improved function to run the auto middle loop
+-- Function to run the auto middle loop (IMPROVED with built-in force center)
 function PetFunctions.runAutoMiddleLoop()
     if not autoMiddleEnabled then return end
 
     local pets = PetFunctions.getAllPets()
     local farmCenterPoint = PetFunctions.getFarmCenterPoint()
 
-    if not farmCenterPoint then 
-        warn("No farm center point available")
-        return 
-    end
+    if not farmCenterPoint then return end
 
-    local processedCount = 0
-    
+    local petsNeedingCorrection = {}
+
     for _, pet in pairs(pets) do
         -- Check if pet should be included in middle function
         local shouldInclude = false
@@ -293,62 +288,79 @@ function PetFunctions.runAutoMiddleLoop()
         end
 
         -- Only process pets that should be included
-        if shouldInclude and pet.mover and pet.mover.Position then
+        if shouldInclude and pet.mover then
             local distance = (pet.mover.Position - farmCenterPoint).Magnitude
             
-            -- Check if pet exceeds maximum allowed distance from center
-            if distance > MAX_DISTANCE_FROM_FARM then
-                -- Pet is too far from center point - force it back to center
-                PetFunctions.forcePetToCenter(pet.id, farmCenterPoint)
-            elseif distance > RADIUS then
-                -- Pet is outside normal radius but within max distance - use normal repositioning
-                PetFunctions.setPetState(pet.id, "Idle")
-            end
-                
-                processedCount = processedCount + 1
-                
-                -- Add a small delay between processing pets to avoid overwhelming the server
-                if processedCount % 5 == 0 then
-                    task.wait(0.05)
-                end
+            -- Force center pets that are outside radius but within max force distance
+            if distance > RADIUS and distance <= MAX_FORCE_DISTANCE then
+                table.insert(petsNeedingCorrection, pet)
             end
         end
     end
+
+    -- Process all pets that need correction
+    for _, pet in pairs(petsNeedingCorrection) do
+        PetFunctions.setPetState(pet.id, "Idle")
+    end
 end
 
--- Function to start the improved loop system
+-- NEW: Continuous monitoring function
+function PetFunctions.continuousMonitor()
+    if not autoMiddleEnabled then return end
+    
+    local currentTime = tick()
+    
+    -- Run a check every second
+    if currentTime % CONTINUOUS_CHECK_INTERVAL < 0.1 then
+        PetFunctions.runAutoMiddleLoop()
+    end
+end
+
+-- Function to start the heartbeat loop (IMPROVED)
 function PetFunctions.startLoop()
     if autoMiddleConnection then
         autoMiddleConnection:Disconnect()
     end
+    if continuousCheckConnection then
+        continuousCheckConnection:Disconnect()
+    end
 
     isLooping = true
-    local lastLoopTime = tick()
     
+    -- Main loop for responsive checking
     autoMiddleConnection = RunService.Heartbeat:Connect(function()
         if not isLooping then return end
-        
-        local currentTime = tick()
-        if currentTime - lastLoopTime >= LOOP_DELAY then
-            lastLoopTime = currentTime
-            PetFunctions.runAutoMiddleLoop()
-        end
+        PetFunctions.runAutoMiddleLoop()
+        task.wait(LOOP_DELAY)
+    end)
+    
+    -- Continuous monitoring for pets that drift away
+    continuousCheckConnection = RunService.Heartbeat:Connect(function()
+        if not autoMiddleEnabled then return end
+        PetFunctions.continuousMonitor()
     end)
 end
 
--- Function to stop the heartbeat loop
+-- Function to stop the heartbeat loop (IMPROVED)
 function PetFunctions.stopLoop()
     isLooping = false
     if autoMiddleConnection then
         autoMiddleConnection:Disconnect()
         autoMiddleConnection = nil
     end
+    if continuousCheckConnection then
+        continuousCheckConnection:Disconnect()
+        continuousCheckConnection = nil
+    end
 end
 
--- Function to start initial loop
+-- Function to start initial loop (IMPROVED)
 function PetFunctions.startInitialLoop()
     if not autoMiddleEnabled then return end
 
+    -- Force pets to center immediately when starting
+    PetFunctions.forcePetsToCenter()
+    
     PetFunctions.startLoop()
 
     if loopTimer then
@@ -363,7 +375,7 @@ function PetFunctions.startInitialLoop()
     end)
 end
 
--- Function to handle PetZoneAbility detection
+-- Function to handle PetZoneAbility detection (IMPROVED)
 function PetFunctions.onPetZoneAbility()
     if not autoMiddleEnabled then return end
 
@@ -377,6 +389,10 @@ function PetFunctions.onPetZoneAbility()
     delayTimer = task.spawn(function()
         task.wait(ZONE_ABILITY_DELAY)
         if autoMiddleEnabled then
+            -- Force pets to center immediately after zone ability
+            PetFunctions.forcePetsToCenter()
+            task.wait(0.2) -- Small delay to let the force command process
+            
             PetFunctions.startLoop()
             task.wait(ZONE_ABILITY_LOOP_TIME)
             if autoMiddleEnabled then
@@ -386,10 +402,14 @@ function PetFunctions.onPetZoneAbility()
     end)
 end
 
--- Function to handle Notification signal detection
+-- Function to handle Notification signal detection (IMPROVED)
 function PetFunctions.onNotificationSignal()
     if not autoMiddleEnabled then return end
 
+    -- Force pets to center immediately on notification
+    PetFunctions.forcePetsToCenter()
+    task.wait(0.2)
+    
     -- Run the loop when notification signal is detected
     PetFunctions.startLoop()
     task.wait(INITIAL_LOOP_TIME)
@@ -414,7 +434,7 @@ function PetFunctions.setupNotificationListener()
     notificationConnection = Notification.OnClientEvent:Connect(PetFunctions.onNotificationSignal)
 end
 
--- Function to cleanup all timers and connections
+-- Function to cleanup all timers and connections (IMPROVED)
 function PetFunctions.cleanup()
     PetFunctions.stopLoop()
 
@@ -436,9 +456,6 @@ function PetFunctions.cleanup()
         task.cancel(delayTimer)
         delayTimer = nil
     end
-    
-    -- Clear state tracking
-    petStates = {}
 end
 
 -- Function to select all pets
@@ -479,20 +496,14 @@ function PetFunctions.updateDropdownOptions()
     end
 end
 
--- Function to refresh pets with improved reliability
+-- Function to refresh pets
 function PetFunctions.refreshPets()
     selectedPets = {}
     allPetsSelected = false
-    petStates = {} -- Clear state tracking
-    
     -- Re-initialize ActivePetUI references
     PetFunctions.initializeActivePetUI()
-    
-    -- Refresh farm center point
-    lastFarmCenterPoint = nil
-    PetFunctions.getFarmCenterPoint()
-    
     local pets = PetFunctions.getAllPets()
+
     PetFunctions.updateDropdownOptions()
     return pets
 end
@@ -580,43 +591,20 @@ function PetFunctions.getIncludedPetIds()
     return ids
 end
 
--- Enhanced debugging function
-function PetFunctions.debugPetPositions()
-    local pets = PetFunctions.getAllPets()
-    local farmCenter = PetFunctions.getFarmCenterPoint()
-    
-    print("=== Pet Position Debug ===")
-    print("Farm Center:", farmCenter)
-    print("Total Pets:", #pets)
-    
-    for _, pet in pairs(pets) do
-        if pet.mover then
-            local distance = farmCenter and (pet.mover.Position - farmCenter).Magnitude or "N/A"
-            print("Pet:", pet.name, "ID:", pet.id, "Distance:", distance, "Position:", pet.mover.Position)
-        else
-            print("Pet:", pet.name, "ID:", pet.id, "No Mover Found")
-        end
-    end
-end
-
--- Getters and Setters
+-- Getters and Setters (IMPROVED)
 function PetFunctions.setAutoMiddleEnabled(enabled)
     autoMiddleEnabled = enabled
     if enabled then
         lastZoneAbilityTime = tick() -- Reset timer when enabling
         PetFunctions.setupNotificationListener()
         PetFunctions.setupZoneAbilityListener() -- Also setup zone ability listener
-        -- Refresh farm center point when enabling
-        PetFunctions.getFarmCenterPoint()
+        -- Force pets to center when enabling
+        task.spawn(function()
+            task.wait(0.1)
+            PetFunctions.forcePetsToCenter()
+        end)
     else
-        if notificationConnection then
-            notificationConnection:Disconnect()
-            notificationConnection = nil
-        end
-        if zoneAbilityConnection then
-            zoneAbilityConnection:Disconnect()
-            zoneAbilityConnection = nil
-        end
+        PetFunctions.cleanup() -- Clean up everything when disabling
     end
 end
 
@@ -632,32 +620,19 @@ function PetFunctions.getCurrentPetsList()
     return currentPetsList
 end
 
--- Add function to get pet states
-function PetFunctions.getPetStates()
-    return petStates
+-- NEW: Manual force center function for external use
+function PetFunctions.forceCenterNow()
+    PetFunctions.forcePetsToCenter()
 end
 
--- Initialize the system with auto refresh and improved error handling
+-- Initialize the system with auto refresh
 task.spawn(function()
     task.wait(1) -- Wait a moment for everything to load
-    
-    local success, error = pcall(function()
-        PetFunctions.initializeActivePetUI()
-        PetFunctions.refreshPets()
-        PetFunctions.updateDropdownOptions()
-    end)
-    
-    if not success then
-        warn("Failed to initialize Pet Functions:", error)
-        -- Retry after a longer delay
-        task.wait(3)
-        pcall(function()
-            PetFunctions.initializeActivePetUI()
-            PetFunctions.refreshPets()
-            PetFunctions.updateDropdownOptions()
-        end)
-    end
+    PetFunctions.initializeActivePetUI()
+    PetFunctions.refreshPets()
 end)
+
+PetFunctions.updateDropdownOptions()
 
 -- Make functions available globally if needed
 _G.updateDropdownOptions = PetFunctions.updateDropdownOptions
@@ -667,5 +642,6 @@ _G.getIncludedPetCount = PetFunctions.getIncludedPetCount
 _G.getIncludedPetIds = PetFunctions.getIncludedPetIds
 _G.includePet = PetFunctions.includePet
 _G.unincludePet = PetFunctions.unincludePet
+_G.forceCenterNow = PetFunctions.forceCenterNow -- NEW: Global function to force center
 
 return PetFunctions
