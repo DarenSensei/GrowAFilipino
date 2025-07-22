@@ -934,7 +934,7 @@ MiscTab:Toggle({
     Value = false,
     Callback = function(value)
             if Misc and type(Misc.toggleBlackScreen) == "function" then
-                Misc.toggleBlackScreen(value)
+            Misc.toggleBlackScreen()
         end
 })
 
