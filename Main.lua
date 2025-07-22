@@ -927,16 +927,6 @@ MiscTab:Button({
     end
 })
 
-MiscTab:Toggle({
-    Title = "Toggle Black Screen",
-    Desc = "Show or hide the black screen UI",
-    Icon = "monitor",
-    Value = false,
-    Callback = function(value)
-            if Misc and type(Misc.toggleBlackScreen) == "function" then
-            Misc.toggleBlackScreen()
-        end
-})
 
 -- ===========================================
 -- SOCIAL TAB (Updated for WindUI)
