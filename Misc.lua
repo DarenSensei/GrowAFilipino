@@ -1,4 +1,4 @@
-Misc = {}
+local Misc = {}
 
 function Misc.toggleBlackScreen(show)
     local player = game:GetService("Players").LocalPlayer
@@ -57,3 +57,5 @@ function Misc.toggleBlackScreen(show)
         existing:Destroy()
     end
 end
+
+return Misc
