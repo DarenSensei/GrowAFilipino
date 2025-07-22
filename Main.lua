@@ -34,8 +34,6 @@ end
 local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/CoreFunctions.lua", "CoreFunctions")
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
-local Misc = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/Misc.lua", "Misc")
-
 -- Check if all dependencies loaded successfully
 if not CoreFunctions then
     error("Failed to load CoreFunctions - script cannot continue")
@@ -80,7 +78,7 @@ local buyConnection = nil
 -- Create Wind UI Window
 local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://124132063885927",
-    Title = "Genzura Hub (v1.2.3)",
+    Title = "Genzura Hub (v1.2.4)",
     Desc = "Made by Yura",
     SubTitle = "Grow A Garden Script Loader",
     TabWidth = 160,
@@ -195,7 +193,7 @@ local MainTab = Window:Tab({
 
 MainTab:Paragraph({
     Title = "📜Changelogs : (v.1.2.4)",
-    Desc = "Added : Misc Tab : Black Screen, Remove Textures Button."
+    Desc = "Added : Added Misc : Blackscreen Toggle",
     color = "#c7c0b7",
 })
 
@@ -620,7 +618,7 @@ Tab:Input({
     Callback = function(value)
         local weight = tonumber(value)
         if weight and weight > 0 then
-            safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
+            local success = safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
         end
     end
 })
@@ -681,7 +679,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedZenItems and type(AutoBuy.setSelectedZenItems) == "function" then
-                AutoBuy.setSelectedZenItems(selectedValues)
+                local count = AutoBuy.setSelectedZenItems(selectedValues)
             end
         end)
         if not success then
@@ -729,7 +727,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedMerchantItems and type(AutoBuy.setSelectedMerchantItems) == "function" then
-                AutoBuy.setSelectedMerchantItems(selectedValues)
+                local count = AutoBuy.setSelectedMerchantItems(selectedValues)
             end
         end)
         if not success then
@@ -770,7 +768,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedEggs and type(AutoBuy.setSelectedEggs) == "function" then
-                AutoBuy.setSelectedEggs(selectedValues)
+                local count = AutoBuy.setSelectedEggs(selectedValues)
             end
         end)
         if not success then
@@ -811,7 +809,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedSeeds and type(AutoBuy.setSelectedSeeds) == "function" then
-                AutoBuy.setSelectedSeeds(selectedValues)
+                local count = AutoBuy.setSelectedSeeds(selectedValues)
             end
         end)
         if not success then
@@ -852,7 +850,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedGear and type(AutoBuy.setSelectedGear) == "function" then
-                AutoBuy.setSelectedGear(selectedValues)
+                local count = AutoBuy.setSelectedGear(selectedValues)
             end
         end)
         if not success then
@@ -1007,7 +1005,6 @@ MiscTab:Toggle({
         end
     end
 })
-
 
 -- ===========================================
 -- SOCIAL TAB (Updated for WindUI)
