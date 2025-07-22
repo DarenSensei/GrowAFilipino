@@ -50,6 +50,8 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
+local StarterGui = game:GetService("StarterGui")
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- Variables initialization
 local selectedPets = {}
@@ -59,6 +61,7 @@ local autoMiddleEnabled = false
 local currentPetsList = {}
 local petDropdown = nil
 local cropDropdown = nil
+local blackScreenGui = nil
 
 -- Sprinkler variables
 local sprinklerTypes = {"Basic Sprinkler", "Advanced Sprinkler", "Master Sprinkler", "Godly Sprinkler", "Honey Sprinkler", "Chocolate Sprinkler"}
@@ -924,6 +927,84 @@ MiscTab:Button({
     Callback = function()
         removeFarms()
         notify("Farms", "Farm removal initiated", 2)
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Black Screen Overlay",
+    Value = false,
+    Icon = "monitor",
+    Callback = function(value)
+        if value then
+            -- TOGGLE ON: Create and show black screen
+            pcall(function()
+                -- Hide Core GUI
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+                
+                -- Create ScreenGui
+                blackScreenGui = Instance.new("ScreenGui")
+                blackScreenGui.Name = "BlackScreenGui"
+                blackScreenGui.ResetOnSpawn = false
+                blackScreenGui.IgnoreGuiInset = true
+                blackScreenGui.Parent = playerGui
+                
+                -- Black Frame
+                local blackFrame = Instance.new("Frame")
+                blackFrame.Name = "BlackBackground"
+                blackFrame.Size = UDim2.new(1, 0, 1, 0)
+                blackFrame.Position = UDim2.new(0, 0, 0, 0)
+                blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+                blackFrame.BackgroundTransparency = 0
+                blackFrame.BorderSizePixel = 0
+                blackFrame.Parent = blackScreenGui
+                
+                -- Logo Image
+                local logoImage = Instance.new("ImageLabel")
+                logoImage.Name = "Logo"
+                logoImage.Size = UDim2.new(0, 200, 0, 200)
+                logoImage.Position = UDim2.new(0.5, -100, 0.5, -100)
+                logoImage.BackgroundTransparency = 1
+                logoImage.ImageTransparency = 0.6
+                logoImage.Image = "rbxassetid://124132063885927"
+                logoImage.ScaleType = Enum.ScaleType.Fit
+                logoImage.Parent = blackFrame
+                
+                -- Add fade in effect
+                blackFrame.BackgroundTransparency = 1
+                logoImage.ImageTransparency = 1
+                
+                local fadeIn = TweenService:Create(
+                    blackFrame, 
+                    TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {BackgroundTransparency = 0}
+                )
+                
+                local logoFadeIn = TweenService:Create(
+                    logoImage,
+                    TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+                    {ImageTransparency = 0.6}
+                )
+                
+                fadeIn:Play()
+                logoFadeIn:Play()
+                
+                print("Black screen overlay enabled")
+            end)
+        else
+            -- TOGGLE OFF: Remove black screen but keep core hidden
+            pcall(function()
+                -- Keep Core GUI hidden
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+                
+                -- Destroy the GUI
+                if blackScreenGui then
+                    blackScreenGui:Destroy()
+                    blackScreenGui = nil
+                end
+                
+                print("Black screen overlay disabled - Core GUI remains hidden")
+            end)
+        end
     end
 })
 
