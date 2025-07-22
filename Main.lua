@@ -677,10 +677,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedZenItems and type(AutoBuy.setSelectedZenItems) == "function" then
-                local count = AutoBuy.setSelectedZenItems(selectedValues)
-                if count > 0 then
-                    notify("Zen Items", "Selected " .. count .. " zen items for auto buy", 3)
-                end
+                AutoBuy.setSelectedZenItems(selectedValues)
             end
         end)
         if not success then
@@ -728,10 +725,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedMerchantItems and type(AutoBuy.setSelectedMerchantItems) == "function" then
-                local count = AutoBuy.setSelectedMerchantItems(selectedValues)
-                if count > 0 then
-                    notify("Merchant Items", "Selected " .. count .. " merchant items for auto buy", 3)
-                end
+                AutoBuy.setSelectedMerchantItems(selectedValues)
             end
         end)
         if not success then
@@ -772,10 +766,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedEggs and type(AutoBuy.setSelectedEggs) == "function" then
-                local count = AutoBuy.setSelectedEggs(selectedValues)
-                if count > 0 then
-                    notify("Eggs", "Selected " .. count .. " eggs for auto buy", 3)
-                end
+                AutoBuy.setSelectedEggs(selectedValues)
             end
         end)
         if not success then
@@ -816,10 +807,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedSeeds and type(AutoBuy.setSelectedSeeds) == "function" then
-                local count = AutoBuy.setSelectedSeeds(selectedValues)
-                if count > 0 then
-                    notify("Seeds", "Selected " .. count .. " seeds for auto buy", 3)
-                end
+                AutoBuy.setSelectedSeeds(selectedValues)
             end
         end)
         if not success then
@@ -860,10 +848,7 @@ ShopTab:Dropdown({
     Callback = function(selectedValues)
         local success, error = pcall(function()
             if AutoBuy and AutoBuy.setSelectedGear and type(AutoBuy.setSelectedGear) == "function" then
-                local count = AutoBuy.setSelectedGear(selectedValues)
-                if count > 0 then
-                    notify("Gear", "Selected " .. count .. " gear items for auto buy", 3)
-                end
+                AutoBuy.setSelectedGear(selectedValues)
             end
         end)
         if not success then
