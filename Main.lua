@@ -616,22 +616,7 @@ Tab:Input({
     Callback = function(value)
         local weight = tonumber(value)
         if weight and weight > 0 then
-            local success = safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
-            if success then
-                WindUI:Notify({
-                    Title = "Weight Updated",
-                    Content = string.format("Target weight set to %.1fkg", weight),
-                    Duration = 2,
-                    Icon = "check"
-                })
-            end
-        else
-            WindUI:Notify({
-                Title = "Invalid Weight",
-                Content = "Please enter a valid number above 0",
-                Duration = 3,
-                Icon = "alert-triangle"
-            })
+            safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
         end
     end
 })
