@@ -26,8 +26,7 @@ local Notification = ReplicatedStorage.GameEvents.Notification
 local activePetUI = nil
 local scrollingFrame = nil
 local selectedPets = {}
-local excludedPets = {}
-local excludedPetESPs = {}
+local includedPets = {}
 local allPetsSelected = false
 local autoMiddleEnabled = false
 local autoMiddleConnection = nil
@@ -117,50 +116,6 @@ function PetFunctions.getPetIdFromPetMover(petMover)
     end
 
     return petMover:GetFullName()
-end
-
--- Function to create ESP "X" marker
-function PetFunctions.createESPMarker(pet)
-    if excludedPetESPs[pet.id] then
-        return -- ESP already exists
-    end
-
-    if not pet.mover then return end
-
-    local billboard = Instance.new("BillboardGui")
-    billboard.Name = "ExcludedPetESP"
-    billboard.Adornee = pet.mover
-    billboard.Size = UDim2.new(0, 50, 0, 50)
-    billboard.StudsOffset = Vector3.new(0, 2, 0)
-    billboard.LightInfluence = 0
-    billboard.AlwaysOnTop = true
-
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(1, 0, 1, 0)
-    frame.BackgroundTransparency = 1
-    frame.Parent = billboard
-
-    local textLabel = Instance.new("TextLabel")
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.BackgroundTransparency = 1
-    textLabel.Text = "X"
-    textLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-    textLabel.TextScaled = true
-    textLabel.Font = Enum.Font.SourceSansBold
-    textLabel.TextStrokeTransparency = 0
-    textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    textLabel.Parent = frame
-
-    billboard.Parent = pet.mover
-    excludedPetESPs[pet.id] = billboard
-end
-
--- Function to remove ESP marker
-function PetFunctions.removeESPMarker(petId)
-    if excludedPetESPs[petId] then
-        excludedPetESPs[petId]:Destroy()
-        excludedPetESPs[petId] = nil
-    end
 end
 
 -- Function to get all pets from ActivePetUI
@@ -263,14 +218,19 @@ function PetFunctions.runAutoMiddleLoop()
     if not farmCenterPoint then return end
 
     for _, pet in pairs(pets) do
-        -- Check if pet is excluded FIRST
-        if PetFunctions.isPetExcluded(pet.id) then
-            -- Skip excluded pets completely
-            continue
-        end
+        -- Check if pet should be included in middle function
+        local shouldInclude = false
         
-        -- Only process pets that are selected (either individually or through "all pets")
-        if allPetsSelected or selectedPets[pet.id] then
+        if allPetsSelected then
+            shouldInclude = true
+        elseif PetFunctions.isPetIncluded(pet.id) then
+            shouldInclude = true
+        elseif selectedPets[pet.id] then
+            shouldInclude = true
+        end
+
+        -- Only process pets that should be included
+        if shouldInclude then
             -- Only process if we have a physical mover
             if pet.mover then
                 local distance = (pet.mover.Position - farmCenterPoint).Magnitude
@@ -396,14 +356,6 @@ function PetFunctions.cleanup()
         task.cancel(delayTimer)
         delayTimer = nil
     end
-
-    -- Clean up ESP markers
-    for petId, esp in pairs(excludedPetESPs) do
-        if esp then
-            esp:Destroy()
-        end
-    end
-    excludedPetESPs = {}
 end
 
 -- Function to select all pets
@@ -412,10 +364,7 @@ function PetFunctions.selectAllPets()
     allPetsSelected = true
     local pets = PetFunctions.getAllPets()
     for _, pet in pairs(pets) do
-        -- Don't select excluded pets
-        if not PetFunctions.isPetExcluded(pet.id) then
-            selectedPets[pet.id] = true
-        end
+        selectedPets[pet.id] = true
     end
 end
 
@@ -447,45 +396,16 @@ function PetFunctions.updateDropdownOptions()
     end
 end
 
--- Function to refresh pets and update ESP markers
+-- Function to refresh pets
 function PetFunctions.refreshPets()
     selectedPets = {}
     allPetsSelected = false
     -- Re-initialize ActivePetUI references
     PetFunctions.initializeActivePetUI()
     local pets = PetFunctions.getAllPets()
-    
-    -- Update ESP markers for excluded pets
-    PetFunctions.updateExcludedPetESPs()
-    
+
     PetFunctions.updateDropdownOptions()
     return pets
-end
-
--- Function to update ESP markers for all excluded pets
-function PetFunctions.updateExcludedPetESPs()
-    local pets = PetFunctions.getAllPets()
-    
-    -- Remove old ESP markers that no longer have corresponding pets
-    for petId, esp in pairs(excludedPetESPs) do
-        local petExists = false
-        for _, pet in pairs(pets) do
-            if pet.id == petId then
-                petExists = true
-                break
-            end
-        end
-        if not petExists then
-            PetFunctions.removeESPMarker(petId)
-        end
-    end
-    
-    -- Add ESP markers for excluded pets
-    for _, pet in pairs(pets) do
-        if PetFunctions.isPetExcluded(pet.id) then
-            PetFunctions.createESPMarker(pet)
-        end
-    end
 end
 
 -- Helper functions for managing pet selection state
@@ -493,8 +413,8 @@ function PetFunctions.getSelectedPets()
     return selectedPets or {}
 end
 
-function PetFunctions.getExcludedPets()
-    return excludedPets or {}
+function PetFunctions.getIncludedPets()
+    return includedPets or {}
 end
 
 function PetFunctions.getAllPetsSelected()
@@ -505,10 +425,8 @@ function PetFunctions.setSelectedPets(pets)
     selectedPets = pets
 end
 
-function PetFunctions.setExcludedPets(pets)
-    excludedPets = pets
-    -- Update ESP markers when excluded pets change
-    PetFunctions.updateExcludedPetESPs()
+function PetFunctions.setIncludedPets(pets)
+    includedPets = pets
 end
 
 function PetFunctions.setAllPetsSelected(value)
@@ -520,12 +438,9 @@ function PetFunctions.selectPet(petId)
     if not selectedPets then
         selectedPets = {}
     end
-    
-    -- Don't select excluded pets
-    if not PetFunctions.isPetExcluded(petId) then
-        selectedPets[petId] = true
-        allPetsSelected = false -- Individual selection means not all are selected
-    end
+
+    selectedPets[petId] = true
+    allPetsSelected = false -- Individual selection means not all are selected
 end
 
 -- Function to deselect individual pets
@@ -536,68 +451,41 @@ function PetFunctions.deselectPet(petId)
     allPetsSelected = false
 end
 
--- Function to exclude pets
-function PetFunctions.excludePet(petId)
-    if not excludedPets then
-        excludedPets = {}
+-- Function to include pets for middle function
+function PetFunctions.includePet(petId)
+    if not includedPets then
+        includedPets = {}
     end
-    
-    excludedPets[petId] = true
-    
-    -- Remove from selected if it was selected
-    if selectedPets then
-        selectedPets[petId] = nil
-    end
-    
-    -- Create ESP marker for this excluded pet
-    local pets = PetFunctions.getAllPets()
-    for _, pet in pairs(pets) do
-        if pet.id == petId then
-            PetFunctions.createESPMarker(pet)
-            break
-        end
-    end
-    
-    -- If all pets were selected, we need to update the selection
-    if allPetsSelected then
-        PetFunctions.selectAllPets() -- This will re-select all non-excluded pets
+
+    includedPets[petId] = true
+end
+
+-- Function to remove pets from included list
+function PetFunctions.unincludePet(petId)
+    if includedPets then
+        includedPets[petId] = nil
     end
 end
 
--- Function to unexclude pets
-function PetFunctions.unexcludePet(petId)
-    if excludedPets then
-        excludedPets[petId] = nil
-    end
-    
-    -- Remove ESP marker
-    PetFunctions.removeESPMarker(petId)
-    
-    -- If all pets mode is on, select this pet too
-    if allPetsSelected then
-        selectedPets[petId] = true
-    end
+-- Helper functions for managing pet inclusions
+function PetFunctions.isPetIncluded(petId)
+    local mainIncludedPets = includedPets or {}
+    return mainIncludedPets[petId] == true
 end
 
--- Helper functions for managing pet exclusions
-function PetFunctions.isPetExcluded(petId)
-    local mainExcludedPets = excludedPets or {}
-    return mainExcludedPets[petId] == true
-end
-
-function PetFunctions.getExcludedPetCount()
-    local mainExcludedPets = excludedPets or {}
+function PetFunctions.getIncludedPetCount()
+    local mainIncludedPets = includedPets or {}
     local count = 0
-    for _ in pairs(mainExcludedPets) do
+    for _ in pairs(mainIncludedPets) do
         count = count + 1
     end
     return count
 end
 
-function PetFunctions.getExcludedPetIds()
-    local mainExcludedPets = excludedPets or {}
+function PetFunctions.getIncludedPetIds()
+    local mainIncludedPets = includedPets or {}
     local ids = {}
-    for petId, _ in pairs(mainExcludedPets) do
+    for petId, _ in pairs(mainIncludedPets) do
         table.insert(ids, petId)
     end
     return ids
@@ -641,10 +529,10 @@ PetFunctions.updateDropdownOptions()
 -- Make functions available globally if needed
 _G.updateDropdownOptions = PetFunctions.updateDropdownOptions
 _G.refreshPets = PetFunctions.refreshPets
-_G.isPetExcluded = PetFunctions.isPetExcluded
-_G.getExcludedPetCount = PetFunctions.getExcludedPetCount
-_G.getExcludedPetIds = PetFunctions.getExcludedPetIds
-_G.excludePet = PetFunctions.excludePet
-_G.unexcludePet = PetFunctions.unexcludePet
+_G.isPetIncluded = PetFunctions.isPetIncluded
+_G.getIncludedPetCount = PetFunctions.getIncludedPetCount
+_G.getIncludedPetIds = PetFunctions.getIncludedPetIds
+_G.includePet = PetFunctions.includePet
+_G.unincludePet = PetFunctions.unincludePet
 
 return PetFunctions
