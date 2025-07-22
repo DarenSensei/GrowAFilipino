@@ -101,6 +101,14 @@ local function safeCall(func, funcName, ...)
     return result
 end
 
+local function notify(title, content, duration)
+    WindUI:Notify({
+        Title = title,
+        Content = content,
+        Duration = duration or 3
+    })
+end
+
 -- FIXED: Sprinkler helper functions using CoreFunctions
 local function getSprinklerTypes()
     return safeCall(CoreFunctions.getSprinklerTypes, "getSprinklerTypes") or sprinklerTypes
