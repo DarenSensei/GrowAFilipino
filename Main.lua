@@ -1053,4 +1053,4 @@ Players.PlayerRemoving:Connect(function(playerLeaving)
 end)
 
 -- Final notification
-notify("GAGSL Hub", "Wind UI version loaded successfully! +999 Pogi Points!", 4)
+notify("Genzura Hub", "Genzura Hub loaded successfully! +999 Pogi Points! for you!", 4)
