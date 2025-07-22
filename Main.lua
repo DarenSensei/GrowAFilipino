@@ -194,8 +194,8 @@ local MainTab = Window:Tab({
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.2.3)",
-    Desc = "Added : New GUI",
+    Title = "📜Changelogs : (v.1.2.4)",
+    Desc = "Added : Misc Tab : Black Screen, Remove Textures Button."
     color = "#c7c0b7",
 })
 
