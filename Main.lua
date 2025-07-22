@@ -34,6 +34,7 @@ end
 local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/CoreFunctions.lua", "CoreFunctions")
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
+local Misc = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/Misc.lua", "Misc")
 
 -- Check if all dependencies loaded successfully
 if not CoreFunctions then
@@ -923,6 +924,16 @@ MiscTab:Button({
     Callback = function()
         removeFarms()
         notify("Farms", "Farm removal initiated", 2)
+    end
+})
+
+MiscTab:Toggle({
+    Title = "Toggle Black Screen",
+    Desc = "Show or hide the black screen UI",
+    Icon = "monitor",
+    Value = false,
+    Callback = function(value)
+        Misc.toggleBlackScreen(value)
     end
 })
 
