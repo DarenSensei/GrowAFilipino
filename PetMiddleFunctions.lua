@@ -71,10 +71,8 @@ end
 
 -- Function to find pet mover in workspace by UUID
 function PetFunctions.findPetMoverByUUID(uuid)
-    -- Remove curly braces for comparison
     local cleanUUID = string.gsub(uuid, "[{}]", "")
 
-    -- Search through workspace for pet movers
     local function searchInFolder(folder)
         for _, child in pairs(folder:GetChildren()) do
             if child:IsA("Part") and child.Name == "PetMover" then
@@ -128,27 +126,23 @@ function PetFunctions.getAllPets()
         end
     end
 
-    -- Iterate through children of ScrollingFrame
     for _, child in pairs(scrollingFrame:GetChildren()) do
         if child:IsA("Frame") and PetFunctions.isValidUUID(child.Name) then
             local uuid = child.Name
-            local petType = "Pet" -- Default type
+            local petType = "Pet"
 
-            -- Try to get pet type from PET_TYPE child
             local petTypeChild = child:FindFirstChild("PET_TYPE")
             if petTypeChild and petTypeChild:IsA("TextLabel") then
                 petType = petTypeChild.Text or "Pet"
             end
 
-            -- Find the corresponding PetMover in workspace
             local petMover = PetFunctions.findPetMoverByUUID(uuid)
 
-            -- Create pet entry
             local petEntry = {
                 id = uuid,
                 name = petType,
-                model = child, -- UI element
-                mover = petMover, -- Physical part in workspace
+                model = child,
+                mover = petMover,
                 position = petMover and petMover.Position or Vector3.new(0, 0, 0)
             }
 
@@ -218,7 +212,6 @@ function PetFunctions.runAutoMiddleLoop()
     if not farmCenterPoint then return end
 
     for _, pet in pairs(pets) do
-        -- Check if pet should be included in middle function
         local shouldInclude = false
         
         if allPetsSelected then
@@ -229,14 +222,10 @@ function PetFunctions.runAutoMiddleLoop()
             shouldInclude = true
         end
 
-        -- Only process pets that should be included
-        if shouldInclude then
-            -- Only process if we have a physical mover
-            if pet.mover then
-                local distance = (pet.mover.Position - farmCenterPoint).Magnitude
-                if distance > RADIUS then
-                    PetFunctions.setPetState(pet.id, "Idle")
-                end
+        if shouldInclude and pet.mover then
+            local distance = (pet.mover.Position - farmCenterPoint).Magnitude
+            if distance > RADIUS then
+                PetFunctions.setPetState(pet.id, "Idle")
             end
         end
     end
@@ -310,7 +299,6 @@ end
 function PetFunctions.onNotificationSignal()
     if not autoMiddleEnabled then return end
 
-    -- Run the loop when notification signal is detected
     PetFunctions.startLoop()
     task.wait(INITIAL_LOOP_TIME)
     if autoMiddleEnabled then
@@ -375,7 +363,6 @@ function PetFunctions.updateDropdownOptions()
     local dropdownOptions = {"None"}
     local petTypeGroups = {}
 
-    -- Group pets by their type
     for i, pet in pairs(pets) do
         local petType = pet.name
         if not petTypeGroups[petType] then
@@ -384,13 +371,11 @@ function PetFunctions.updateDropdownOptions()
         table.insert(petTypeGroups[petType], pet)
     end
 
-    -- Create dropdown options with grouped pets
     for petType, petGroup in pairs(petTypeGroups) do
         table.insert(dropdownOptions, petType)
-        currentPetsList[petType] = petGroup -- Store the entire group
+        currentPetsList[petType] = petGroup
     end
 
-    -- Update the dropdown options
     if petDropdown and petDropdown.Refresh then
         petDropdown:Refresh(dropdownOptions, true)
     end
@@ -400,7 +385,6 @@ end
 function PetFunctions.refreshPets()
     selectedPets = {}
     allPetsSelected = false
-    -- Re-initialize ActivePetUI references
     PetFunctions.initializeActivePetUI()
     local pets = PetFunctions.getAllPets()
 
@@ -440,7 +424,7 @@ function PetFunctions.selectPet(petId)
     end
 
     selectedPets[petId] = true
-    allPetsSelected = false -- Individual selection means not all are selected
+    allPetsSelected = false
 end
 
 -- Function to deselect individual pets
@@ -492,19 +476,6 @@ function PetFunctions.getIncludedPetIds()
 end
 
 -- Getters and Setters
-function PetFunctions.setAutoMiddleEnabled(enabled)
-    autoMiddleEnabled = enabled
-    if enabled then
-        lastZoneAbilityTime = tick() -- Reset timer when enabling
-        PetFunctions.setupNotificationListener()
-    else
-        if notificationConnection then
-            notificationConnection:Disconnect()
-            notificationConnection = nil
-        end
-    end
-end
-
 function PetFunctions.getAutoMiddleEnabled()
     return autoMiddleEnabled
 end
@@ -517,16 +488,16 @@ function PetFunctions.getCurrentPetsList()
     return currentPetsList
 end
 
--- Initialize the system with auto refresh
+-- Initialize the system
 task.spawn(function()
-    task.wait(1) -- Wait a moment for everything to load
+    task.wait(1)
     PetFunctions.initializeActivePetUI()
     PetFunctions.refreshPets()
 end)
 
 PetFunctions.updateDropdownOptions()
 
--- Make functions available globally if needed
+-- Make functions available globally
 _G.updateDropdownOptions = PetFunctions.updateDropdownOptions
 _G.refreshPets = PetFunctions.refreshPets
 _G.isPetIncluded = PetFunctions.isPetIncluded
