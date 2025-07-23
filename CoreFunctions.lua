@@ -382,51 +382,6 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
-    -- Get player's root part for distance calculation
-    local player = game.Players.LocalPlayer
-    local character = player.Character or player.CharacterAdded:Wait()
-    local rootPart = character:WaitForChild("HumanoidRootPart")
-
-    -- Find the nearest farm (current player's farm)
-    local currentFarm = nil
-    local closestDistance = math.huge
-    
-    -- Assuming farmFolder exists and contains the farms
-    if not farmFolder then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Farm folder not found.",
-                Time = 3
-            })
-        end
-        return
-    end
-
-    for _, farm in ipairs(farmFolder:GetChildren()) do
-        if farm:IsA("Model") or farm:IsA("Folder") then
-            local farmRoot = farm:FindFirstChild("HumanoidRootPart") or farm:FindFirstChildWhichIsA("BasePart")
-            if farmRoot then
-                local distance = (farmRoot.Position - rootPart.Position).Magnitude
-                if distance < closestDistance then
-                    closestDistance = distance
-                    currentFarm = farm
-                end
-            end
-        end
-    end
-
-    if not currentFarm then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "No nearby farm found.",
-                Time = 3
-            })
-        end
-        return
-    end
-
     local success, destroyEnv = pcall(function()
         return getsenv and getsenv(shovelClient) or nil
     end)
@@ -445,10 +400,7 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     local deletedCount = 0
     local deletedTypes = {}
 
-    -- Only iterate through objects in the current (nearest) farm
-    local currentFarmObjects = currentFarm:FindFirstChild("Objects") or currentFarm
-    
-    for _, obj in ipairs(currentFarmObjects:GetChildren()) do
+    for _, obj in ipairs(objectsFolder:GetChildren()) do
         for _, typeName in ipairs(targetSprinklers) do
             if obj.Name == typeName then
                 -- Track which types we actually deleted
@@ -477,13 +429,13 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     if OrionLib then
         OrionLib:MakeNotification({
             Name = "Sprinklers Deleted",
-            Content = string.format("Deleted %d sprinklers from nearest farm", deletedCount),
+            Content = string.format("Deleted %d sprinklers", deletedCount),
             Time = 3
         })
     end
 end
 
--- Sprinkler selection helper functions remain the same
+-- Sprinkler selection helper functions
 function CoreFunctions.getSprinklerTypes()
     return sprinklerTypes
 end
