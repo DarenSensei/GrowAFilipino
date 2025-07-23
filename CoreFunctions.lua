@@ -366,135 +366,61 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
-    -- Get player's username
-    local player = game:GetService("Players").LocalPlayer
-    local playerName = player.Name
-    
-    -- Get the farm name from PlayerGui
-    local farmName = nil
-    local success = pcall(function()
-        local farmTextGui = game:GetService("Players")[playerName].PlayerGui.BillboardGui.Frame.YourFarmText.YourFarmStroke
-        if farmTextGui and farmTextGui.Text then
-            farmName = farmTextGui.Text
-        end
-    end)
-    
-    if not success or not farmName then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Could not get farm name from PlayerGui.",
-                Time = 3
-            })
-        end
-        return
-    end
-
-    -- Find the farm in Workspace by Owner tag
-    local targetFarm = nil
-    local workspaceFarms = game:GetService("Workspace").Farm
-    
-    if workspaceFarms then
-        for _, farm in ipairs(workspaceFarms:GetChildren()) do
-            local ownerTag = farm:FindFirstChild("Owner")
-            if ownerTag and ownerTag.Value == playerName then
-                -- Check if this is the correct farm by name
-                if farm.Name == farmName or farm:FindFirstChild(farmName) then
-                    targetFarm = farm
-                    break
-                end
-            end
-        end
-    end
-    
-    -- Alternative method: try using the farm modules as fallback
-    if not targetFarm then
-        local GetFarm = game:GetService("ReplicatedStorage").Modules.GetFarm
-        local GetFarmAncestor = game:GetService("ReplicatedStorage").Modules.GetFarmAncestor
-        local GetFarmAsync = game:GetService("ReplicatedStorage").Modules.GetFarmAsync
-        local GetMouseToWorld = game:GetService("ReplicatedStorage").Modules.GetMouseToWorld
-        
-        -- Try GetFarm first
-        if GetFarm then
-            local success, farm = pcall(function()
-                return require(GetFarm)()
-            end)
-            if success and farm then
-                targetFarm = farm
-            end
-        end
-        
-        -- Try GetFarmAsync
-        if not targetFarm and GetFarmAsync then
-            local success, farm = pcall(function()
-                local farmAsync = require(GetFarmAsync)
-                if typeof(farmAsync) == "function" then
-                    return farmAsync()
-                end
-                return nil
-            end)
-            if success and farm then
-                targetFarm = farm
-            end
-        end
-        
-        -- Try GetFarmAncestor with mouse position
-        if not targetFarm and GetFarmAncestor and GetMouseToWorld then
-            local success, farm = pcall(function()
-                local mouseToWorld = require(GetMouseToWorld)
-                local farmAncestor = require(GetFarmAncestor)
-                
-                if typeof(mouseToWorld) == "function" and typeof(farmAncestor) == "function" then
-                    local mousePos = mouseToWorld()
-                    if mousePos then
-                        return farmAncestor(mousePos)
-                    end
-                end
-                return nil
-            end)
-            if success and farm then
-                targetFarm = farm
-            end
-        end
-        
-        -- Try GetFarmAncestor with player position
-        if not targetFarm and GetFarmAncestor then
-            local success, farm = pcall(function()
-                local farmAncestor = require(GetFarmAncestor)
-                
-                if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local playerPos = player.Character.HumanoidRootPart.Position
-                    return farmAncestor(playerPos)
-                end
-                return nil
-            end)
-            if success and farm then
-                targetFarm = farm
-            end
-        end
-    end
-    
-    if not targetFarm then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Could not find target farm: " .. (farmName or "Unknown"),
-                Time = 3
-            })
-        end
-        return
-    end
-
     -- Auto equip shovel first
     CoreFunctions.autoEquipShovel()
     task.wait(0.5)
 
-    -- Check if shovelClient exists
-    if not shovelClient then
+    -- Check if shovelClient and objectsFolder exist
+    if not shovelClient or not objectsFolder then
         if OrionLib then
             OrionLib:MakeNotification({
                 Name = "Error",
-                Content = "Shovel client not found.",
+                Content = "Required objects not found.",
+                Time = 3
+            })
+        end
+        return
+    end
+
+    -- Get player's root part for distance calculation
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+
+    -- Find the nearest farm (current player's farm)
+    local currentFarm = nil
+    local closestDistance = math.huge
+    
+    -- Assuming farmFolder exists and contains the farms
+    if not farmFolder then
+        if OrionLib then
+            OrionLib:MakeNotification({
+                Name = "Error",
+                Content = "Farm folder not found.",
+                Time = 3
+            })
+        end
+        return
+    end
+
+    for _, farm in ipairs(farmFolder:GetChildren()) do
+        if farm:IsA("Model") or farm:IsA("Folder") then
+            local farmRoot = farm:FindFirstChild("HumanoidRootPart") or farm:FindFirstChildWhichIsA("BasePart")
+            if farmRoot then
+                local distance = (farmRoot.Position - rootPart.Position).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    currentFarm = farm
+                end
+            end
+        end
+    end
+
+    if not currentFarm then
+        if OrionLib then
+            OrionLib:MakeNotification({
+                Name = "Error",
+                Content = "No nearby farm found.",
                 Time = 3
             })
         end
@@ -519,53 +445,10 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     local deletedCount = 0
     local deletedTypes = {}
 
-    -- Look for sprinklers in the specific Objects_Physical folder
-    local objectsPhysical = nil
+    -- Only iterate through objects in the current (nearest) farm
+    local currentFarmObjects = currentFarm:FindFirstChild("Objects") or currentFarm
     
-    -- Try to find Objects_Physical in the target farm using Farm.Farm structure
-    if targetFarm:FindFirstChild("Farm") then
-        local farmFolder = targetFarm.Farm
-        if farmFolder:FindFirstChild("Farm") then
-            local innerFarmFolder = farmFolder.Farm
-            if innerFarmFolder:FindFirstChild("Important") then
-                local importantFolder = innerFarmFolder.Important
-                if importantFolder:FindFirstChild("Objects_Physical") then
-                    objectsPhysical = importantFolder.Objects_Physical
-                end
-            end
-        elseif farmFolder:FindFirstChild("Important") then
-            local importantFolder = farmFolder.Important
-            if importantFolder:FindFirstChild("Objects_Physical") then
-                objectsPhysical = importantFolder.Objects_Physical
-            end
-        end
-    end
-    
-    -- Alternative paths in case the structure is different
-    if not objectsPhysical then
-        if targetFarm:FindFirstChild("Important") then
-            local importantFolder = targetFarm.Important
-            if importantFolder:FindFirstChild("Objects_Physical") then
-                objectsPhysical = importantFolder.Objects_Physical
-            end
-        elseif targetFarm:FindFirstChild("Objects_Physical") then
-            objectsPhysical = targetFarm.Objects_Physical
-        end
-    end
-    
-    if not objectsPhysical then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Could not find Objects_Physical folder in farm.",
-                Time = 3
-            })
-        end
-        return
-    end
-    
-    -- Delete sprinklers from Objects_Physical
-    for _, obj in ipairs(objectsPhysical:GetChildren()) do
+    for _, obj in ipairs(currentFarmObjects:GetChildren()) do
         for _, typeName in ipairs(targetSprinklers) do
             if obj.Name == typeName then
                 -- Track which types we actually deleted
@@ -594,111 +477,13 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     if OrionLib then
         OrionLib:MakeNotification({
             Name = "Sprinklers Deleted",
-            Content = string.format("Deleted %d sprinklers from %s", deletedCount, farmName or targetFarm.Name),
+            Content = string.format("Deleted %d sprinklers from nearest farm", deletedCount),
             Time = 3
         })
     end
 end
 
--- Helper function to get current farm using all available methods
-function CoreFunctions.getCurrentFarm()
-    local player = game:GetService("Players").LocalPlayer
-    local playerName = player.Name
-    
-    -- Try to get farm from PlayerGui first
-    local farmName = nil
-    local success = pcall(function()
-        local farmTextGui = game:GetService("Players")[playerName].PlayerGui.BillboardGui.Frame.YourFarmText.YourFarmStroke
-        if farmTextGui and farmTextGui.Text then
-            farmName = farmTextGui.Text
-        end
-    end)
-    
-    if success and farmName then
-        -- Find the farm in Workspace by Owner tag
-        local workspaceFarms = game:GetService("Workspace").Farm
-        
-        if workspaceFarms then
-            for _, farm in ipairs(workspaceFarms:GetChildren()) do
-                local ownerTag = farm:FindFirstChild("Owner")
-                if ownerTag and ownerTag.Value == playerName then
-                    if farm.Name == farmName or farm:FindFirstChild(farmName) then
-                        return farm
-                    end
-                end
-            end
-        end
-    end
-    
-    -- Fallback to module methods
-    local GetFarm = game:GetService("ReplicatedStorage").Modules.GetFarm
-    local GetFarmAncestor = game:GetService("ReplicatedStorage").Modules.GetFarmAncestor
-    local GetFarmAsync = game:GetService("ReplicatedStorage").Modules.GetFarmAsync
-    local GetMouseToWorld = game:GetService("ReplicatedStorage").Modules.GetMouseToWorld
-    
-    -- Try GetFarm first
-    if GetFarm then
-        local success, farm = pcall(function()
-            return require(GetFarm)()
-        end)
-        if success and farm then
-            return farm
-        end
-    end
-    
-    -- Try GetFarmAsync
-    if GetFarmAsync then
-        local success, farm = pcall(function()
-            local farmAsync = require(GetFarmAsync)
-            if typeof(farmAsync) == "function" then
-                return farmAsync()
-            end
-            return nil
-        end)
-        if success and farm then
-            return farm
-        end
-    end
-    
-    -- Try GetFarmAncestor with mouse position
-    if GetFarmAncestor and GetMouseToWorld then
-        local success, farm = pcall(function()
-            local mouseToWorld = require(GetMouseToWorld)
-            local farmAncestor = require(GetFarmAncestor)
-            
-            if typeof(mouseToWorld) == "function" and typeof(farmAncestor) == "function" then
-                local mousePos = mouseToWorld()
-                if mousePos then
-                    return farmAncestor(mousePos)
-                end
-            end
-            return nil
-        end)
-        if success and farm then
-            return farm
-        end
-    end
-    
-    -- Try GetFarmAncestor with player position
-    if GetFarmAncestor then
-        local success, farm = pcall(function()
-            local farmAncestor = require(GetFarmAncestor)
-            
-            if player and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                local playerPos = player.Character.HumanoidRootPart.Position
-                return farmAncestor(playerPos)
-            end
-            return nil
-        end)
-        if success and farm then
-            return farm
-        end
-    end
-    
-    return nil
-end
-
--- Sprinkler selection helper functions
+-- Sprinkler selection helper functions remain the same
 function CoreFunctions.getSprinklerTypes()
     return sprinklerTypes
 end
