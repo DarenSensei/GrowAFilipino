@@ -936,7 +936,13 @@ MiscTab:Toggle({
         if value then
             -- TOGGLE ON: Create and show black screen
             pcall(function()
-                -- Hide Core GUI
+                -- Clean up any existing black screen first
+                if blackScreenGui then
+                    blackScreenGui:Destroy()
+                    blackScreenGui = nil
+                end
+                
+                -- Hide Core GUI only when toggling ON
                 StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
                 
                 -- Create ScreenGui
@@ -944,6 +950,7 @@ MiscTab:Toggle({
                 blackScreenGui.Name = "BlackScreenGui"
                 blackScreenGui.ResetOnSpawn = false
                 blackScreenGui.IgnoreGuiInset = true
+                blackScreenGui.DisplayOrder = 999999 -- Ensure it's on top
                 blackScreenGui.Parent = playerGui
                 
                 -- Black Frame
@@ -952,8 +959,9 @@ MiscTab:Toggle({
                 blackFrame.Size = UDim2.new(1, 0, 1, 0)
                 blackFrame.Position = UDim2.new(0, 0, 0, 0)
                 blackFrame.BackgroundColor3 = Color3.new(0, 0, 0)
-                blackFrame.BackgroundTransparency = 0
+                blackFrame.BackgroundTransparency = 1 -- Start transparent for fade
                 blackFrame.BorderSizePixel = 0
+                blackFrame.ZIndex = 1
                 blackFrame.Parent = blackScreenGui
                 
                 -- Logo Image
@@ -962,15 +970,13 @@ MiscTab:Toggle({
                 logoImage.Size = UDim2.new(0, 200, 0, 200)
                 logoImage.Position = UDim2.new(0.5, -100, 0.5, -100)
                 logoImage.BackgroundTransparency = 1
-                logoImage.ImageTransparency = 0.6
+                logoImage.ImageTransparency = 1 -- Start transparent for fade
                 logoImage.Image = "rbxassetid://124132063885927"
                 logoImage.ScaleType = Enum.ScaleType.Fit
+                logoImage.ZIndex = 2
                 logoImage.Parent = blackFrame
                 
                 -- Add fade in effect
-                blackFrame.BackgroundTransparency = 1
-                logoImage.ImageTransparency = 1
-                
                 local fadeIn = TweenService:Create(
                     blackFrame, 
                     TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
@@ -989,18 +995,17 @@ MiscTab:Toggle({
                 print("Black screen overlay enabled")
             end)
         else
-            -- TOGGLE OFF: Remove black screen but keep core hidden
+            -- TOGGLE OFF: Hide black screen and restore all core GUI
             pcall(function()
-                -- Keep Core GUI hidden
-                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
-                
-                -- Destroy the GUI
-                if blackScreenGui then
-                    blackScreenGui:Destroy()
-                    blackScreenGui = nil
+                -- Hide the black screen GUI
+                if blackScreenGui and blackScreenGui.Parent then
+                    blackScreenGui.Enabled = false
                 end
                 
-                print("Black screen overlay disabled - Core GUI remains hidden")
+                -- Restore all core GUI when turning off
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+                
+                print("Black screen overlay disabled - All core GUI restored")
             end)
         end
     end
