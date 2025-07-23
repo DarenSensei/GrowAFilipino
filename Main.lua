@@ -30,17 +30,25 @@ if not WindUI then
     error("Failed to load Wind UI - script cannot continue")
 end
 
+
+local function safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
+    
+    if not success then
+        warn("Failed to load " .. name .. ": " .. tostring(result))
+        return nil
+    end
+    
+    return result
+end
 -- Load external functions with error handling
 local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/CoreFunctions.lua", "CoreFunctions")
-local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
 -- Check if all dependencies loaded successfully
 if not CoreFunctions then
     error("Failed to load CoreFunctions - script cannot continue")
-end
-
-if not PetFunctions then
-    error("Failed to load PetFunctions - script cannot continue")
 end
 
 -- Services
