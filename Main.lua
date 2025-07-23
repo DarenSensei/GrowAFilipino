@@ -942,8 +942,11 @@ MiscTab:Toggle({
                     blackScreenGui = nil
                 end
                 
-                -- Hide Core GUI only when toggling ON
-                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+                -- Hide specific Core GUI elements (including backpack)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, false)
                 
                 -- Create ScreenGui
                 blackScreenGui = Instance.new("ScreenGui")
@@ -953,7 +956,7 @@ MiscTab:Toggle({
                 blackScreenGui.DisplayOrder = 999999 -- Ensure it's on top
                 blackScreenGui.Parent = playerGui
                 
-                -- Black Frame
+                -- Black Frame (covers everything)
                 local blackFrame = Instance.new("Frame")
                 blackFrame.Name = "BlackBackground"
                 blackFrame.Size = UDim2.new(1, 0, 1, 0)
@@ -964,7 +967,7 @@ MiscTab:Toggle({
                 blackFrame.ZIndex = 1
                 blackFrame.Parent = blackScreenGui
                 
-                -- Logo Image
+                -- Logo Image (keeping the logo as requested)
                 local logoImage = Instance.new("ImageLabel")
                 logoImage.Name = "Logo"
                 logoImage.Size = UDim2.new(0, 200, 0, 200)
@@ -992,20 +995,24 @@ MiscTab:Toggle({
                 fadeIn:Play()
                 logoFadeIn:Play()
                 
-                print("Black screen overlay enabled")
+                print("Black screen overlay enabled - Image and backpack hidden")
             end)
         else
             -- TOGGLE OFF: Hide black screen and restore all core GUI
             pcall(function()
                 -- Hide the black screen GUI
                 if blackScreenGui and blackScreenGui.Parent then
-                    blackScreenGui.Enabled = false
+                    blackScreenGui:Destroy()
+                    blackScreenGui = nil
                 end
                 
-                -- Restore all core GUI when turning off
-                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true)
+                -- Restore only specific core GUI (NOT backpack)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, true)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true)
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, true)
+                -- Backpack stays hidden as requested
                 
-                print("Black screen overlay disabled - All core GUI restored")
+                print("Black screen overlay disabled - Backpack remains hidden")
             end)
         end
     end
