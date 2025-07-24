@@ -892,8 +892,8 @@ MiscTab:Paragraph({
 })
 
 MiscTab:Button({
-    Title = "Reduce Lag",
-    Desc = "Remove all lag-causing objects from workspace",
+    Title = "Reduce Textures",
+    Desc = "Remove all textures to reduce fps drop",
     Icon = "trash-2",
     Callback = function()
         local ToDisable = {
