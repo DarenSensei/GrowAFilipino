@@ -35,7 +35,7 @@ end
 local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/CoreFunctions.lua", "CoreFunctions")
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
-local LocalPlayer = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/LocalPlayer.lua")
+local LocalPlayer = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/LocalPlayer.lua", "LocalPlayer")
 if not CoreFunctions then
     error("Failed to load CoreFunctions - script cannot continue")
 end
