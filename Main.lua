@@ -312,6 +312,27 @@ MainTab:Button({
     end
 })
 
+MainTab:Paragraph({
+    Title = "Local Player",
+    Desc = "Modify Your Character",
+    Icon = "info"
+})
+
+MainTab:Toggle({
+    Title = "No-Clip",
+    Value = false,
+    Callback = function(Value)
+        LocalPlayer.setNoClip(Value)
+        
+        WindUI:Notify({
+            Title = "No-Clip",
+            Content = Value and "No-Clip Enabled" or "No-Clip Disabled",
+            Duration = 3,
+            Icon = Value and "ghost" or "user"
+        })
+    end
+})
+
 -- FARM TAB
 local Tab = Window:Tab({
     Title = "Farm",
