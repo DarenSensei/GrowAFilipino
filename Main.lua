@@ -313,10 +313,8 @@ MainTab:Button({
     end
 })
 
-MainTab:Paragraph({
-    Title = "Local Player",
-    Desc = "Modify Your Character",
-    Icon = "info"
+Tab:Section({
+    Title = "---- Local Player ----"
 })
 
 MainTab:Toggle({
@@ -331,6 +329,26 @@ MainTab:Toggle({
             Duration = 3,
             Icon = Value and "ghost" or "user"
         })
+    end
+})
+
+MainTab:Toggle({
+    Title = "Infinite Jump",
+    Value = false,
+    Callback = function(Value)
+        local infiniteJumpEnabled = Value
+        
+        -- Infinite Jump functionality inline
+        if Value then
+            userInputService.JumpRequest:Connect(function()
+                if infiniteJumpEnabled and player.Character then
+                    local humanoid = player.Character:FindFirstChildOfClass('Humanoid')
+                    if humanoid then
+                        humanoid:ChangeState("Jumping")
+                    end
+                end
+            end)
+        end
     end
 })
 
