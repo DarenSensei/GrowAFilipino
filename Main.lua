@@ -50,6 +50,8 @@ local player = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 local playerGui = player:WaitForChild("PlayerGui")
 local userInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local PetMutationMachineService_RE = ReplicatedStorage.GameEvents.PetMutationMachineService_RE
 
 -- Variables initialization
 local selectedPets = {}
@@ -1058,7 +1060,7 @@ VulnTab:Section({
 
 VulnTab:Paragraph({
     Title = "Pet Mutation",
-    Desc = "Start Machine's Timer so the next time you put a pet it will finish instantly (use the button for putting a pet)",
+    Desc = "Start Machine's Timer so the next time you put a pet, it will finish instantly (use the button for putting a pet)",
     Icon = "zap"
 })
 
@@ -1377,4 +1379,5 @@ Players.PlayerRemoving:Connect(function(playerLeaving)
 end)
 
 -- Final notification
+game:GetService("LogService"):ClearOutput()
 notify("Genzura Hub", "Genzura Hub loaded successfully! +999 Pogi Points! for you!", 4)
