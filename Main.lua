@@ -421,8 +421,8 @@ Tab:Section({
 })
 
 Tab:Paragraph({
-    Title = "How to use:",
-    Desc = "Refresh Pets > Choose Exclude Pets, ones has an X Marker in it > Auto Middle Pets",
+    Title = "Pet Exploit:",
+    Desc = "Choose your pet to Stay Middle",
     Icon = "info"
 })
 
