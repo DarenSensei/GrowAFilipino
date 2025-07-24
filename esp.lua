@@ -101,7 +101,7 @@ local function createESPLabel(part, plantName, weight)
     textLabel.Parent = billboardGui
     textLabel.Size = UDim2.new(1, 0, 1, 0)
     textLabel.BackgroundTransparency = 1
-    textLabel.Text = plantName .. " [" .. string.format("%.2f", weight) .. kg"]"
+    textLabel.Text = plantName .. " [" .. string.format("%.2f", weight) .. " kg]"
     textLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
     textLabel.TextStrokeTransparency = 0
     textLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
