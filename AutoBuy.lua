@@ -518,8 +518,7 @@ function AutoBuy.init()
     
     -- Start the loop for basic shops
     AutoBuy.startLoop()
-    
-    print("Complete AutoBuy Module initialized successfully!")
+
 end
 
 return AutoBuy
