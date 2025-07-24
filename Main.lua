@@ -37,6 +37,7 @@ local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFil
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local LocalPlayer = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/LocalPlayer.lua", "LocalPlayer")
 local Vuln = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/Vuln.lua", "Vuln")
+local esp = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/esp.lua", "esp")
 if not CoreFunctions then
     error("Failed to load CoreFunctions - script cannot continue")
 end
@@ -192,7 +193,7 @@ local MainTab = Window:Tab({
 
 MainTab:Paragraph({
     Title = "📜Changelogs : (v.1.2.5)",
-    Desc = "Added : Added Main : Local Player",
+    Desc = "Added : Added Vuln, ESP (Crops KG)",
     color = "#c7c0b7",
 })
 
@@ -1235,6 +1236,51 @@ MiscTab:Toggle({
                 print("Black screen overlay disabled - Backpack remains hidden")
             end)
         end
+    end
+})
+
+MiscTab:Section({
+    Title = "--ESP--"
+})
+
+
+MiscTab:Divider()
+
+MiscTab:Dropdown({
+    Title = "Select Crops to Monitor",
+    Values = safeCall(esp.getCropTypes, "getCropTypes") or {"All Plants"},
+    Value = {""},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local selectedCrops = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            local hasAllPlants = false
+            for _, value in pairs(selectedValues) do
+                if value == "All Plants" then
+                    hasAllPlants = true
+                    break
+                end
+            end
+            
+            if not hasAllPlants then
+                for _, cropName in pairs(selectedValues) do
+                    selectedCrops[cropName] = true
+                end
+            end
+        end
+        
+        safeCall(esp.setSelectedCrops, "setSelectedCrops", selectedCrops)
+    end
+})
+
+
+MiscTab:Toggle({
+    Title = "Fruit ESP",
+    Value = false,
+    Callback = function(Value)
+        esp.toggle(Value)
     end
 })
 
