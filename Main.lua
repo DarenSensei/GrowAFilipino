@@ -189,8 +189,8 @@ local MainTab = Window:Tab({
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.2.4)",
-    Desc = "Added : Added Misc : Blackscreen Toggle",
+    Title = "📜Changelogs : (v.1.2.5)",
+    Desc = "Added : Added Main : Local Player",
     color = "#c7c0b7",
 })
 
@@ -313,7 +313,7 @@ MainTab:Button({
     end
 })
 
-Tab:Section({
+MainTab:Section({
     Title = "---- Local Player ----"
 })
 
