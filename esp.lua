@@ -1,3 +1,4 @@
+-- ESP Module
 local esp = {}
 
 local Players = game:GetService("Players")
@@ -7,6 +8,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local ESPObjects = {}
 local ESPConnection = nil
+local selectedCrops = {} -- Store selected crops
 
 -- Core Functions
 local function getCurrentFarm()
@@ -32,6 +34,42 @@ local function getCurrentFarm()
     end
     
     return nil
+end
+
+-- Get crop types
+function esp.getCropTypes()
+    local farm = getCurrentFarm()
+    if not farm or not farm:FindFirstChild("Important") or not farm.Important:FindFirstChild("Plants_Physical") then
+        return {"All Plants"}
+    end
+    
+    local cropTypes = {"All Plants"}
+    local addedTypes = {}
+    
+    for _, plant in pairs(farm.Important.Plants_Physical:GetChildren()) do
+        if not addedTypes[plant.Name] then
+            table.insert(cropTypes, plant.Name)
+            addedTypes[plant.Name] = true
+        end
+    end
+    
+    return cropTypes
+end
+
+-- Set selected crops
+function esp.setSelectedCrops(crops)
+    selectedCrops = crops or {}
+end
+
+-- Check if plant should be ESP'd
+local function shouldESPPlant(plantName)
+    -- If no crops selected or "All Plants" is effectively selected, ESP all
+    if not selectedCrops or next(selectedCrops) == nil then
+        return true
+    end
+    
+    -- Check if this specific plant is selected
+    return selectedCrops[plantName] == true
 end
 
 -- Get fruit weight from individual fruit object
@@ -88,9 +126,9 @@ local function updateESP()
         return
     end
     
-    -- Create ESP for each individual fruit
+    -- Create ESP for each individual fruit (only selected plants)
     for _, plant in pairs(farm.Important.Plants_Physical:GetChildren()) do
-        if plant:FindFirstChild("Fruits") then
+        if plant:FindFirstChild("Fruits") and shouldESPPlant(plant.Name) then
             for _, fruit in pairs(plant.Fruits:GetChildren()) do
                 local base = getFruitBase(fruit)
                 local weight = getFruitWeight(fruit)
