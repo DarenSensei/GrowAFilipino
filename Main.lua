@@ -978,7 +978,7 @@ VulnTab:Dropdown({
 -- Toggle for auto rejoin (only sets the preference, doesn't start rejoin)
 VulnTab:Toggle({
     Title = "Auto Rejoin",
-    Value = false,
+    Value = true,
     Icon = "refresh-ccw",
     Callback = function(value)
         teleportEnabled = value
