@@ -47,6 +47,7 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 local playerGui = player:WaitForChild("PlayerGui")
+local userInputService = game:GetService("UserInputService")
 
 -- Variables initialization
 local selectedPets = {}
@@ -75,7 +76,7 @@ local buyConnection = nil
 -- Create Wind UI Window
 local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://124132063885927",
-    Title = "Genzura Hub (v1.2.4)",
+    Title = "Genzura Hub",
     Desc = "Made by Yura",
     SubTitle = "Grow A Garden Script Loader",
     TabWidth = 160,
@@ -336,18 +337,25 @@ MainTab:Toggle({
     Title = "Infinite Jump",
     Value = false,
     Callback = function(Value)
-        local infiniteJumpEnabled = Value
-        
-        -- Infinite Jump functionality inline
         if Value then
-            userInputService.JumpRequest:Connect(function()
-                if infiniteJumpEnabled and player.Character then
+            local connection
+            connection = userInputService.JumpRequest:Connect(function()
+                if player.Character then
                     local humanoid = player.Character:FindFirstChildOfClass('Humanoid')
                     if humanoid then
                         humanoid:ChangeState("Jumping")
                     end
                 end
             end)
+            
+            -- Store connection to disconnect later if needed
+            getgenv().infiniteJumpConnection = connection
+        else
+            -- Disconnect when disabled
+            if getgenv().infiniteJumpConnection then
+                getgenv().infiniteJumpConnection:Disconnect()
+                getgenv().infiniteJumpConnection = nil
+            end
         end
     end
 })
