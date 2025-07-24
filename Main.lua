@@ -50,6 +50,7 @@ local player = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 local playerGui = player:WaitForChild("PlayerGui")
 local userInputService = game:GetService("UserInputService")
+local PetMutationMachineService_RE = ReplicatedStorage.GameEvents.PetMutationMachineService_RE
 
 -- Variables initialization
 local selectedPets = {}
@@ -1045,6 +1046,52 @@ VulnTab:Button({
                 Content = "Failed to start auto craft: " .. tostring(error),
                 Duration = 5,
                 Icon = "x-circle"
+            })
+        end
+    end
+})
+
+VulnTab:Divider()
+
+VulnTab:Section({
+    Title = "--Pet Mutation--"
+})
+
+VulnTab:Paragraph({
+    Title = "Pet Mutation",
+    Desc = "Start Machine's Timer so the next time you put a pet it will finish instantly (use the button for putting a pet)",
+    Icon = "zap"
+})
+
+VulnTab:Button({
+    Title = "Start Machine",
+    Icon = "play",
+    Callback = function()
+        if PetMutationMachineService_RE then
+            PetMutationMachineService_RE:FireServer("StartMachine")
+            
+            WindUI:Notify({
+                Title = "Success",
+                Content = "Machine Started!",
+                Duration = 2,
+                Icon = "check-circle"
+            })
+        end
+    end
+})
+
+VulnTab:Button({
+    Title = "Submit Held Pet",
+    Icon = "send",
+    Callback = function()
+        if PetMutationMachineService_RE then
+            PetMutationMachineService_RE:FireServer("SubmitHeldPet")
+            
+            WindUI:Notify({
+                Title = "Success",
+                Content = "Pet Submitted!",
+                Duration = 2,
+                Icon = "check-circle"
             })
         end
     end
