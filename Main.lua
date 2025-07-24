@@ -50,7 +50,6 @@ local player = Players.LocalPlayer
 local StarterGui = game:GetService("StarterGui")
 local playerGui = player:WaitForChild("PlayerGui")
 local userInputService = game:GetService("UserInputService")
-local PetMutationMachineService_RE = ReplicatedStorage.GameEvents.PetMutationMachineService_RE
 
 -- Variables initialization
 local selectedPets = {}
