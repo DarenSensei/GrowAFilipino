@@ -927,7 +927,7 @@ end
 local VulnTab = Window:Tab({
     Title = "Vuln",
     Icon = "syringe",
-    Desc = "Performance optimization and miscellaneous features"
+    Desc = "Vulnerable Data to Exploit"
 })
 
 VulnTab:Paragraph({
