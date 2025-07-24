@@ -1115,7 +1115,7 @@ local SocialTab = Window:Tab({
 
 SocialTab:Paragraph({
     Title = "TikTok",
-    Desc = "@atutubieee
+    Desc = "@atutubieee",
     Icon = "music",
     Color = "Blue"
 })
