@@ -323,13 +323,6 @@ MainTab:Toggle({
     Value = false,
     Callback = function(Value)
         LocalPlayer.setNoClip(Value)
-        
-        WindUI:Notify({
-            Title = "No-Clip",
-            Content = Value and "No-Clip Enabled" or "No-Clip Disabled",
-            Duration = 3,
-            Icon = Value and "ghost" or "user"
-        })
     end
 })
 
