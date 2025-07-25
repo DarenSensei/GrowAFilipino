@@ -244,7 +244,7 @@ local MainTab = Window:Tab({
 
 MainTab:Paragraph({
     Title = "📜Changelogs : (v.1.2.5)",
-    Desc = "Added : Added Vuln, ESP (Crops KG)",
+    Desc = "Added : Config",
     color = "#c7c0b7",
 })
 
