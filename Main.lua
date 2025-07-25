@@ -268,17 +268,7 @@ MainTab:Button({
     Desc = "Rejoin the current server",
     Icon = "refresh-cw",
     Callback = function()
-        local success, error = pcall(function()
-            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
-        end)
-        if not success then
-            WindUI:Notify({
-                Title = "Error",
-                Content = "Failed to rejoin: " .. tostring(error),
-                Duration = 5,
-                Icon = "alert-triangle"
-            })
-        end
+        game:GetService("TeleportService"):Teleport(game.PlaceId, game:GetService("Players").LocalPlayer)
     end
 })
 
@@ -1095,6 +1085,30 @@ VulnTab:Button({
                 Icon = "check-circle"
             })
         end
+    end
+})
+
+VulnTab:Divider()
+
+VulnTab:Section({
+        Title = "-- Zen Auto --"
+    })
+
+VulnTab:Button({
+    Title = "Zen Aura Submit",
+    Desc = "Submit all plants for Zen Aura",
+    Icon = "leaf",
+    Callback = function()
+        game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
+    end
+})
+
+VulnTab:Button({
+    Title = "Zen Quest Submit", 
+    Desc = "Submit all plants for Zen Quest",
+    Icon = "target",
+    Callback = function()
+        game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
     end
 })
 
