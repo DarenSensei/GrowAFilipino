@@ -1,7 +1,3 @@
--- SettingsManager.lua - External Persistent Settings System
--- Save this as a separate file and load it via HTTP in your main script
--- Usage: local SettingsManager = loadstring(game:HttpGet("YOUR_URL_HERE"))()
-
 local SettingsManager = {}
 SettingsManager.__index = SettingsManager
 
@@ -40,20 +36,9 @@ function SettingsManager.new(config)
     return self
 end
 
--- Debug logging
+-- Debug logging (removed - silent operation)
 function SettingsManager:log(message, level)
-    if not self.DEBUG_MODE then return end
-    
-    local prefix = "🔧 [SettingsManager] "
-    if level == "error" then
-        prefix = "❌ [SettingsManager] "
-    elseif level == "success" then
-        prefix = "✅ [SettingsManager] "
-    elseif level == "warning" then
-        prefix = "⚠️ [SettingsManager] "
-    end
-    
-    print(prefix .. message)
+    -- Silent operation - no console output
 end
 
 -- Deep copy function for tables
@@ -100,7 +85,7 @@ function SettingsManager:saveToFile()
         self:log("Settings saved to file: " .. self.SETTINGS_FILE, "success")
         return true
     else
-        self:log("Failed to save settings: " .. tostring(err), "error")
+        warn("Failed to save settings: " .. tostring(err))
         return false
     end
 end
@@ -125,7 +110,7 @@ function SettingsManager:loadFromFile()
         self:log("Settings loaded from file: " .. self.SETTINGS_FILE, "success")
         return result
     else
-        self:log("Failed to load settings: " .. tostring(result), "error")
+        warn("Failed to load settings: " .. tostring(result))
         return nil
     end
 end
@@ -338,7 +323,7 @@ function SettingsManager:import(jsonString)
         self:log("Settings imported successfully", "success")
         return true
     else
-        self:log("Failed to import settings: Invalid JSON", "error")
+        warn("Failed to import settings: Invalid JSON")
         return false
     end
 end
