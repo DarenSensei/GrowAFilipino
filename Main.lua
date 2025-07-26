@@ -53,13 +53,11 @@ local Settings = SettingsManager.create({
         toggles = {
             noClip = false,
             infiniteJump = false,
-            teleportEnabled = true,
             buySelectedZenItems = false,
             buySelectedMerchantItems = false,
             toggleEgg = false,
             toggleSeed = false,
-            toggleGear = false,
-            autoCraftEnabled = false
+            toggleGear = false
         },
         dropdowns = {
             selectedCrops = {},
@@ -67,8 +65,7 @@ local Settings = SettingsManager.create({
             selectedMerchantItems = {},
             selectedEggs = {},
             selectedSeeds = {},
-            selectedGear = {},
-            selectedCraftItems = {}
+            selectedGear = {}
         },
         inputs = {
             weightThreshold = 50,
@@ -962,193 +959,6 @@ VulnTab:Paragraph({
     Title = "Vuln",
     Desc = "Exploit of the week",
     Icon = "zap"
-})
-
--- Dropdown for selecting craft items
-local selectedCraftItems = {}
-local autoCraftEnabled = false
-local teleportEnabled = true
-local autoCraftConnection = nil
-
--- Function to process selected values (extracted to avoid duplication)
-local function processSelectedValues(selectedValues)
-    -- Clear existing selected items
-    selectedCraftItems = {}
-    
-    if selectedValues and #selectedValues > 0 then
-        local hasNone = false
-        for _, value in pairs(selectedValues) do
-            if value == "None" then
-                hasNone = true
-                break
-            end
-        end
-        
-        if not hasNone then
-            for _, itemName in pairs(selectedValues) do
-                selectedCraftItems[itemName] = true
-            end
-        end
-    end
-    
-    -- Update Vuln functions if available
-    if Vuln and Vuln.setSelectedCraftItems then
-        pcall(function()
-            Vuln.setSelectedCraftItems(selectedCraftItems)
-        end)
-    end
-    
-    -- If auto craft is currently enabled and no items are selected, stop it
-    if autoCraftEnabled and (not selectedCraftItems or next(selectedCraftItems) == nil) then
-        autoCraftEnabled = false
-        Settings:saveToggle("autoCraftEnabled", false)
-        
-        WindUI:Notify({
-            Title = "Auto Craft Stopped",
-            Content = "Auto craft disabled due to no selected items.",
-            Duration = 3,
-            Icon = "alert-triangle"
-        })
-    end
-end
-
--- Load saved values first and initialize
-local savedValues = Settings:loadDropdown("selectedCraftItems", {})
-local savedTeleportEnabled = Settings:loadToggle("teleportEnabled", true)
-local savedAutoCraftEnabled = Settings:loadToggle("autoCraftEnabled", false)
-
--- Initialize teleport setting
-teleportEnabled = savedTeleportEnabled
-if Vuln and Vuln.setTeleportEnabled then
-    pcall(function()
-        Vuln.setTeleportEnabled(teleportEnabled)
-    end)
-end
-
--- Process the loaded dropdown values immediately to populate selectedCraftItems
-if savedValues and #savedValues > 0 then
-    local success, error = pcall(function()
-        processSelectedValues(savedValues)
-    end)
-    
-    if not success then
-        print("Error processing loaded craft items:", error)
-    end
-end
-
--- Initialize auto craft state
-autoCraftEnabled = savedAutoCraftEnabled
-
--- Dropdown for selecting craft items
-VulnTab:Dropdown({
-    Title = "Select Items to Craft",
-    Values = {"Dino Egg", "Ancient Seed Pack", "Primal Egg"},
-    Value = savedValues, -- Use the loaded values
-    Multi = true,
-    AllowNone = true,
-    Callback = function(selectedValues)
-        Settings:saveDropdown("selectedCraftItems", selectedValues) -- Save selection
-        
-        local success, error = pcall(function()
-            processSelectedValues(selectedValues)
-        end)
-        
-        if not success then
-            print("Error in craft dropdown callback:", error)
-        end
-    end
-})
-
--- Toggle for auto rejoin (only sets the preference, doesn't start rejoin)
-VulnTab:Toggle({
-    Title = "Auto Rejoin",
-    Value = teleportEnabled, -- Use the loaded state
-    Icon = "refresh-ccw",
-    Callback = function(value)
-        teleportEnabled = value
-        Settings:saveToggle("teleportEnabled", value) -- Save new state
-        
-        -- Update Vuln module
-        if Vuln and Vuln.setTeleportEnabled then
-            pcall(function()
-                Vuln.setTeleportEnabled(value)
-            end)
-        end
-    end
-})
-
--- Toggle for Auto Craft
-VulnTab:Toggle({
-    Title = "Auto Craft",
-    Value = autoCraftEnabled, -- Use the loaded state
-    Icon = "play",
-    Callback = function(Value)
-        local success, error = pcall(function()
-            if Value then
-                -- Starting Auto Craft
-                if not selectedCraftItems or next(selectedCraftItems) == nil then
-                    WindUI:Notify({
-                        Title = "No Items Selected",
-                        Content = "Please select items to craft from the dropdown above.",
-                        Duration = 3,
-                        Icon = "alert-triangle"
-                    })
-                    -- Reset the toggle state since we can't start
-                    autoCraftEnabled = false
-                    Settings:saveToggle("autoCraftEnabled", false)
-                    return
-                end
-                
-                autoCraftEnabled = true
-                Settings:saveToggle("autoCraftEnabled", true) -- Save new state
-                
-                -- Start crafting process with current rejoin setting
-                if Vuln and Vuln.startAutoCraft then
-                    Vuln.startAutoCraft(selectedCraftItems, teleportEnabled)
-                else
-                    -- Fallback to local crafting functions if available
-                    if startLocalAutoCraft then
-                        startLocalAutoCraft(teleportEnabled)
-                    end
-                end
-                
-                local rejoinStatus = teleportEnabled and " (Auto Rejoin: ON)" or " (Auto Rejoin: OFF)"
-                WindUI:Notify({
-                    Title = "Auto Craft Started",
-                    Content = "Crafting selected items..." .. rejoinStatus,
-                    Duration = 3,
-                    Icon = "check-circle"
-                })
-                
-            else
-                -- Stopping Auto Craft
-                autoCraftEnabled = false
-                Settings:saveToggle("autoCraftEnabled", false) -- Save new state
-                
-                if Vuln and Vuln.stopAutoCraft then
-                    Vuln.stopAutoCraft()
-                end
-                
-                -- Disconnect any connections if they exist
-                if autoCraftConnection then
-                    autoCraftConnection:Disconnect()
-                    autoCraftConnection = nil
-                end
-            end
-        end)
-        
-        if not success then
-            -- On error, ensure the state is consistent
-            autoCraftEnabled = false
-            Settings:saveToggle("autoCraftEnabled", false)
-            WindUI:Notify({
-                Title = "Error",
-                Content = "Failed to toggle auto craft: " .. tostring(error),
-                Duration = 5,
-                Icon = "x-circle"
-            })
-        end
-    end
 })
 
 VulnTab:Divider()
