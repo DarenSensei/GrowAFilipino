@@ -408,13 +408,10 @@ local sprinklerDropdown = Tab:Dropdown({
         end
         return options
     end)(),
-    Value = Settings:loadDropdown("selectedSprinklers"), -- Load saved selection
+    Value = {}, -- Fixed: Use empty array instead of string
     Multi = true,
     AllowNone = true,
     Callback = function(selectedValues)
-        Settings:saveDropdown("selectedSprinklers", selectedValues) -- Save selection
-        
-        -- Your existing sprinkler logic here...
         if CoreFunctions then
             safeCall(CoreFunctions.clearSelectedSprinklers, "clearSelectedSprinklers")
             
@@ -432,26 +429,31 @@ local sprinklerDropdown = Tab:Dropdown({
                         safeCall(CoreFunctions.addSprinklerToSelection, "addSprinklerToSelection", sprinklerName)
                     end
                     
-                    notify("Selection Updated", string.format("Selected %d sprinklers", #selectedValues), 3)
+
                 end
             end
         end
     end
 })
 
--- Select all sprinklers toggle with settings
+-- Select all sprinklers toggle
 Tab:Toggle({
     Title = "Select All Sprinkler",
-    Value = Settings:loadToggle("selectAllSprinklers"), -- Load saved state
+    Value = false,
     Callback = function(Value)
-        Settings:saveToggle("selectAllSprinklers", Value) -- Save new state
-        
         if Value and CoreFunctions then
             local allSprinklers = safeCall(CoreFunctions.getSprinklerTypes, "getSprinklerTypes") or {}
-            Settings:saveDropdown("selectedSprinklers", allSprinklers)
-            notify("All Selected", string.format("Selected all %d sprinkler types", #allSprinklers), 3)
+            
+            -- Clear current selection first
+            safeCall(CoreFunctions.clearSelectedSprinklers, "clearSelectedSprinklers")
+            
+            -- Add all sprinklers to selection
+            for _, sprinklerName in ipairs(allSprinklers) do
+                safeCall(CoreFunctions.addSprinklerToSelection, "addSprinklerToSelection", sprinklerName)
+            end
         else
-            Settings:saveDropdown("selectedSprinklers", {})
+            -- Clear selection
+            safeCall(CoreFunctions.clearSelectedSprinklers, "clearSelectedSprinklers")
         end
     end
 })
@@ -461,22 +463,22 @@ Tab:Button({
     Title = "Delete Sprinkler",
     Icon = "trash-2",
     Callback = function()
-        local selectedArray = getSelectedSprinklers()
+        -- Get selected sprinklers from CoreFunctions
+        local selectedArray = {}
+        if CoreFunctions and CoreFunctions.getSelectedSprinklers then
+            selectedArray = safeCall(CoreFunctions.getSelectedSprinklers, "getSelectedSprinklers") or {}
+        end
         
         if #selectedArray == 0 then
-            WindUI:Notify({
-                Title = "No Selection",
-                Content = "Please select sprinkler type(s) first",
-                Duration = 4,
-                Icon = "alert-triangle"
-            })
             return
         end
         
-        deleteSprinklers()
+        -- Call the delete function from CoreFunctions
+        if CoreFunctions and CoreFunctions.deleteSprinklers then
+            safeCall(CoreFunctions.deleteSprinklers, "deleteSprinklers", selectedArray, WindUI)
+        end
     end
 })
-
 Tab:Divider()
 
 Tab:Section({
