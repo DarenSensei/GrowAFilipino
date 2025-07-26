@@ -220,7 +220,7 @@ function PetFunctions.runAutoMiddleLoop()
     for _, pet in pairs(pets) do
         -- Check if pet should be included in middle function
         local shouldInclude = false
-        
+
         if allPetsSelected then
             shouldInclude = true
         elseif PetFunctions.isPetIncluded(pet.id) then
@@ -231,13 +231,8 @@ function PetFunctions.runAutoMiddleLoop()
 
         -- Only process pets that should be included
         if shouldInclude then
-            -- Only process if we have a physical mover
-            if pet.mover then
-                local distance = (pet.mover.Position - farmCenterPoint).Magnitude
-                if distance > RADIUS then
-                    PetFunctions.setPetState(pet.id, "Idle")
-                end
-            end
+            -- Always set pets to Idle to ensure they stay in the middle
+            PetFunctions.setPetState(pet.id, "Idle")
         end
     end
 end
