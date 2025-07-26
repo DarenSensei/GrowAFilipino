@@ -494,7 +494,7 @@ Tab:Paragraph({
 petDropdown = Tab:Dropdown({
     Title = "Select Pets to Include in Middle",
     Values = {"None"},
-    Value = {"None"},
+    Value = {""},
     Multi = true,
     AllowNone = true,
     Callback = function(selectedValues)
