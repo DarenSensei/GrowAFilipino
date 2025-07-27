@@ -966,44 +966,6 @@ VulnTab:Paragraph({
 VulnTab:Divider()
 
 VulnTab:Section({
-    Title = "--Early Corrupted Zen--"
-})
-
-VulnTab:Button({
-    Title = "Load Corrupted Zen",
-    Icon = "zap",
-    Callback = function()
-        local success, error = pcall(function()
-            local ReplicatedStorage = game:GetService("ReplicatedStorage")
-            local corruptedZenModule = ReplicatedStorage.Modules.UpdateService["Corrupted Zen"]
-            
-            if corruptedZenModule then
-                -- Move the module to workspace to execute it
-                corruptedZenModule.Parent = workspace
-            else
-                WindUI:Notify({
-                    Title = "Module Not Found",
-                    Content = "Corrupted Zen module not found in UpdateService",
-                    Duration = 3,
-                    Icon = "alert-triangle"
-                })
-            end
-        end)
-        
-        if not success then
-            WindUI:Notify({
-                Title = "Error Loading Module",
-                Content = "Failed to load Corrupted Zen: " .. tostring(error),
-                Duration = 5,
-                Icon = "x-circle"
-            })
-        end
-    end
-})
-
-VulnTab:Divider()
-
-VulnTab:Section({
     Title = "--Pet Mutation--"
 })
 
