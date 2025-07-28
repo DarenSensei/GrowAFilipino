@@ -36,7 +36,7 @@ local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/Gr
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local LocalPlayer = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/LocalPlayer.lua", "LocalPlayer")
-local Vuln = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/Vuln.lua", "Vuln")
+local vuln = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/Vuln.lua", "vuln")
 local esp = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/esp.lua", "esp")
 local SettingsManager = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/SettingsManager.lua", "SettingsManager")
 if not CoreFunctions then
@@ -80,6 +80,7 @@ local Settings = SettingsManager.create({
     }
 })
 
+-- Configuration
 
 -- Services
 local Players = game:GetService("Players")
@@ -101,6 +102,10 @@ local currentPetsList = {}
 local petDropdown = nil
 local cropDropdown = nil
 local blackScreenGui = nil
+local autoSellEnabled = false
+local sellDelay = 1
+local isProcessing = false
+local autoSellConnection
 
 -- Sprinkler variables
 local sprinklerTypes = {"Basic Sprinkler", "Advanced Sprinkler", "Master Sprinkler", "Godly Sprinkler", "Honey Sprinkler", "Chocolate Sprinkler"}
@@ -124,7 +129,7 @@ local Window = WindUI:CreateWindow({
     SubTitle = "Grow A Garden",
     TabWidth = 160,
     Size = UDim2.fromOffset(470, 350),
-    Acrylic = true,
+    Transparent = true,
     Theme = "Dark"
 })
 
@@ -233,8 +238,8 @@ local MainTab = Window:Tab({
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.2.5)",
-    Desc = "Added : Config",
+    Title = "📜Changelogs : (v.1.3)",
+    Desc = "Added : Auto Harvest, Auto Collect, Auto Submit Kitsune.",
     color = "#c7c0b7",
 })
 
@@ -387,10 +392,279 @@ MainTab:Toggle({
         end
     end
 })
--- FARM TAB
-local Tab = Window:Tab({
+
+local Farm = Window:Tab({
     Title = "Farm",
     Icon = "tractor", -- Using WindUI's lucide icon system
+})
+
+Farm:Divider()
+
+Farm:Section({
+    Title = "--AUTO SHOVEL--"
+})
+
+cropDropdown = Farm:Dropdown({
+    Title = "Select Crops to Monitor",
+    Values = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"},
+    Value = {""},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local selectedCrops = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            local hasAllPlants = false
+            for _, value in pairs(selectedValues) do
+                if value == "All Plants" then
+                    hasAllPlants = true
+                    break
+                end
+            end
+            
+            if not hasAllPlants then
+                for _, cropName in pairs(selectedValues) do
+                    selectedCrops[cropName] = true
+                end
+            end
+        end
+        
+        safeCall(CoreFunctions.setSelectedCrops, "setSelectedCrops", selectedCrops)
+    end
+})
+
+Farm:Button({
+    Title = "Refresh Crop List",
+    Icon = "rotate-cw",
+    Callback = function()
+        local newCropTypes = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"}
+        if cropDropdown and cropDropdown.Refresh then
+            pcall(function()
+                cropDropdown:Refresh(newCropTypes, true)
+            end)
+        end
+        
+        WindUI:Notify({
+            Title = "List Refreshed",
+            Content = string.format("Found %d crop types", #newCropTypes - 1),
+            Duration = 2,
+            Icon = "refresh-cw"
+        })
+    end
+})
+
+Farm:Input({
+    Title = "Remove Fruits Below (kg)",
+    Value = tostring(safeCall(CoreFunctions.getTargetFruitWeight, "getTargetFruitWeight") or 50),
+    Placeholder = "Enter weight threshold",
+    InputIcon = "weight",
+    Callback = function(value)
+        local weight = tonumber(value)
+        if weight and weight > 0 then
+            local success = safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
+        end
+    end
+})
+
+Farm:Toggle({
+    Title = "Enable Auto Shovel",
+    Value = safeCall(CoreFunctions.getAutoShovelStatus, "getAutoShovelStatus") or false,
+    Icon = "shovel",
+    Callback = function(enabled)
+        local success, message = safeCall(CoreFunctions.toggleAutoShovel, "toggleAutoShovel", enabled)
+        if success and message then
+            WindUI:Notify({
+                Title = "Auto Shovel",
+                Content = message,
+                Duration = 2,
+                Icon = enabled and "check-circle" or "x-circle"
+            })
+        end
+    end
+})
+
+Farm:Divider()
+
+Farm:Section({
+    Title = "-- Auto harvest --"
+})
+
+cropDropdown = Farm:Dropdown({
+    Title = "Select Crops to Harvest",
+    Values = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"},
+    Value = {""},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local selectedCrops = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            local hasAllPlants = false
+            for _, value in pairs(selectedValues) do
+                if value == "All Plants" then
+                    hasAllPlants = true
+                    break
+                end
+            end
+            
+            if not hasAllPlants then
+                for _, cropName in pairs(selectedValues) do
+                    selectedCrops[cropName] = true
+                end
+            end
+        end
+        
+        safeCall(CoreFunctions.setSelectedCrops, "setSelectedCrops", selectedCrops)
+    end
+})
+
+whitelistDropdown = Farm:Dropdown({
+    Title = "Whitelist Mutations (Only Harvest These)",
+    Values = safeCall(CoreFunctions.getMutationTypes, "getMutationTypes") or {},
+    Value = {""},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local whitelistMutations = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            for _, mutationName in pairs(selectedValues) do
+                whitelistMutations[mutationName] = true
+            end
+        end
+        
+        safeCall(CoreFunctions.setWhitelistMutations, "setWhitelistMutations", whitelistMutations)
+    end
+})
+
+blacklistDropdown = Farm:Dropdown({
+    Title = "Blacklist Mutations (Never Harvest These)",
+    Values = safeCall(CoreFunctions.getMutationTypes, "getMutationTypes") or {},
+    Value = {""},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local blacklistMutations = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            for _, mutationName in pairs(selectedValues) do
+                blacklistMutations[mutationName] = true
+            end
+        end
+        
+        safeCall(CoreFunctions.setBlacklistMutations, "setBlacklistMutations", blacklistMutations)
+    end
+})
+
+Farm:Button({
+    Title = "Refresh Lists",
+    Icon = "rotate-cw",
+    Callback = function()
+        local newCropTypes = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"}
+        local newMutations = safeCall(CoreFunctions.getMutationTypes, "getMutationTypes") or {}
+        
+        if cropDropdown and cropDropdown.Refresh then
+            pcall(function()
+                cropDropdown:Refresh(newCropTypes, true)
+            end)
+        end
+        
+        if whitelistDropdown and whitelistDropdown.Refresh then
+            pcall(function()
+                whitelistDropdown:Refresh(newMutations, true)
+            end)
+        end
+        
+        if blacklistDropdown and blacklistDropdown.Refresh then
+            pcall(function()
+                blacklistDropdown:Refresh(newMutations, true)
+            end)
+        end
+        
+        WindUI:Notify({
+            Title = "Lists Refreshed",
+            Content = string.format("Found %d crops and %d mutations", #newCropTypes - 1, #newMutations),
+            Duration = 2,
+            Icon = "refresh-cw"
+        })
+    end
+})
+
+Farm:Toggle({
+    Title = "Enable Auto Harvest",
+    Value = safeCall(CoreFunctions.getAutoHarvestStatus, "getAutoHarvestStatus") or false,
+    Icon = "leaf",
+    Callback = function(enabled)
+        local success, message = safeCall(CoreFunctions.toggleAutoHarvest, "toggleAutoHarvest", enabled)
+        if success and message then
+            WindUI:Notify({
+                Title = "Auto Harvest",
+                Content = message,
+                Duration = 2,
+                Icon = enabled and "check-circle" or "x-circle"
+            })
+        end
+    end
+})
+
+Farm:Divider()
+
+Farm:Section({
+    Title = "-- Auto Sell --"
+})
+
+-- Main loop function
+local function startAutoSell()
+    if autoSellConnection then
+        autoSellConnection:Disconnect()
+    end
+    
+    spawn(function()
+        while autoSellEnabled do
+            if not isProcessing then
+                isProcessing = true
+                CoreFunctions.performAutoSell()
+                isProcessing = false
+                wait(sellDelay)
+            else
+                wait(0.1)
+            end
+        end
+    end)
+end
+
+-- Toggle for Auto Sell
+Farm:Toggle({
+    Title = "Auto Sell",
+    Value = false,
+    Callback = function(Value)
+        autoSellEnabled = Value
+        
+        if Value then
+            startAutoSell()
+        else
+            autoSellEnabled = false
+        end
+    end
+})
+
+-- Input for Delay
+Farm:Input({
+    Title = "Sell Delay",
+    Desc = "Delay between sells (seconds)",
+    Placeholder = "Enter delay in seconds...",
+    Callback = function(value)
+        local delay = tonumber(value)
+        if delay and delay >= 0.1 then
+            sellDelay = delay
+        end
+    end
+})
+
+-- Glitch TAB
+local Tab = Window:Tab({
+    Title = "Glitch",
+    Icon = "bug", -- Using WindUI's lucide icon system
 })
 
 Tab:Section({
@@ -616,90 +890,7 @@ Tab:Toggle({
         end
     end
 })
-Tab:Divider()
 
-Tab:Section({
-    Title = "--AUTO SHOVEL--"
-})
-
-cropDropdown = Tab:Dropdown({
-    Title = "Select Crops to Monitor",
-    Values = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"},
-    Value = {""},
-    Multi = true,
-    AllowNone = true,
-    Callback = function(selectedValues)
-        local selectedCrops = {}
-        
-        if selectedValues and #selectedValues > 0 then
-            local hasAllPlants = false
-            for _, value in pairs(selectedValues) do
-                if value == "All Plants" then
-                    hasAllPlants = true
-                    break
-                end
-            end
-            
-            if not hasAllPlants then
-                for _, cropName in pairs(selectedValues) do
-                    selectedCrops[cropName] = true
-                end
-            end
-        end
-        
-        safeCall(CoreFunctions.setSelectedCrops, "setSelectedCrops", selectedCrops)
-    end
-})
-
-Tab:Button({
-    Title = "Refresh Crop List",
-    Icon = "rotate-cw",
-    Callback = function()
-        local newCropTypes = safeCall(CoreFunctions.getCropTypes, "getCropTypes") or {"All Plants"}
-        if cropDropdown and cropDropdown.Refresh then
-            pcall(function()
-                cropDropdown:Refresh(newCropTypes, true)
-            end)
-        end
-        
-        WindUI:Notify({
-            Title = "List Refreshed",
-            Content = string.format("Found %d crop types", #newCropTypes - 1),
-            Duration = 2,
-            Icon = "refresh-cw"
-        })
-    end
-})
-
-Tab:Input({
-    Title = "Remove Fruits Below (kg)",
-    Value = tostring(safeCall(CoreFunctions.getTargetFruitWeight, "getTargetFruitWeight") or 50),
-    Placeholder = "Enter weight threshold",
-    InputIcon = "weight",
-    Callback = function(value)
-        local weight = tonumber(value)
-        if weight and weight > 0 then
-            local success = safeCall(CoreFunctions.setTargetFruitWeight, "setTargetFruitWeight", weight)
-        end
-    end
-})
-
-Tab:Toggle({
-    Title = "Enable Auto Shovel",
-    Value = safeCall(CoreFunctions.getAutoShovelStatus, "getAutoShovelStatus") or false,
-    Icon = "shovel",
-    Callback = function(enabled)
-        local success, message = safeCall(CoreFunctions.toggleAutoShovel, "toggleAutoShovel", enabled)
-        if success and message then
-            WindUI:Notify({
-                Title = "Auto Shovel",
-                Content = message,
-                Duration = 2,
-                Icon = enabled and "check-circle" or "x-circle"
-            })
-        end
-    end
-})
 -- ===========================================
 -- SHOP TAB (Updated for WindUI)
 -- ===========================================
@@ -961,6 +1152,23 @@ VulnTab:Paragraph({
     Title = "Vuln",
     Desc = "Exploit of the week",
     Icon = "zap"
+})
+
+VulnTab:Toggle({
+    Title = "Auto Submit to Fox",
+    Value = safeCall(vuln.getAutoVulnStatus, "getAutoVulnStatus") or false,
+    Icon = "repeat",
+    Callback = function(enabled)
+        local success, message = safeCall(vuln.toggleAutoVuln, "toggleAutoVuln", enabled)
+        if success and message then
+            WindUI:Notify({
+                Title = "Auto Vuln Submission",
+                Content = message,
+                Duration = 2,
+                Icon = enabled and "check-circle" or "x-circle"
+            })
+        end
+    end
 })
 
 VulnTab:Divider()
@@ -1284,7 +1492,6 @@ MiscTab:Section({
     Title = "--ESP--"
 })
 
-
 MiscTab:Divider()
 
 MiscTab:Dropdown({
@@ -1316,6 +1523,35 @@ MiscTab:Dropdown({
     end
 })
 
+MiscTab:Button({
+    Title = "Refresh Crop List",
+    Icon = "rotate-cw",
+    Callback = function()
+        local function safeCall(func, funcName)
+            local success, result = pcall(func)
+            if success then
+                return result
+            else
+                return nil
+            end
+        end
+        
+        local newCropTypes = safeCall(esp.getCropTypes, "getCropTypes") or {"All Plants"}
+        
+        if cropDropdown and cropDropdown.Refresh then
+            pcall(function()
+                cropDropdown:Refresh(newCropTypes, true)
+            end)
+        end
+        
+        WindUI:Notify({
+            Title = "List Refreshed",
+            Content = string.format("Found %d crop types", #newCropTypes - 1),
+            Duration = 2,
+            Icon = "refresh-cw"
+        })
+    end
+})
 
 MiscTab:Toggle({
     Title = "Fruit ESP",
@@ -1324,6 +1560,14 @@ MiscTab:Toggle({
         esp.toggle(Value)
     end
 })
+
+MiscTab:Section({
+    Title = "--Pet Cooldown ESP--"
+})
+
+MiscTab:Divider()
+
+
 
 -- ===========================================
 -- SOCIAL TAB (Updated for WindUI)
