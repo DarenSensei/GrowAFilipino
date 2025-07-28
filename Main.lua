@@ -1154,6 +1154,12 @@ VulnTab:Paragraph({
     Icon = "zap"
 })
 
+VulnTab:Divider()
+
+VulnTab:Section({
+    Title = "-- Auto Submit Kitsune --"
+})
+
 VulnTab:Toggle({
     Title = "Auto Submit to Fox",
     Value = safeCall(vuln.getAutoVulnStatus, "getAutoVulnStatus") or false,
@@ -1167,6 +1173,18 @@ VulnTab:Toggle({
                 Duration = 2,
                 Icon = enabled and "check-circle" or "x-circle"
             })
+        end
+    end
+})
+
+VulnTab:Input({
+    Title = "Teleport Delay",
+    Desc = "Delay before teleporting back (seconds)",
+    Placeholder = "Enter delay in seconds...",
+    Callback = function(value)
+        local delay = tonumber(value)
+        if delay and delay >= 0.1 then
+            vuln.setTeleportDelay(delay)
         end
     end
 })
