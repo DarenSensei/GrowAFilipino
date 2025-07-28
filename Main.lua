@@ -1189,6 +1189,18 @@ VulnTab:Input({
     end
 })
 
+VulnTab:Input({
+    Title = "Wait Duration", 
+    Desc = "How long to wait at old position (seconds)",
+    Placeholder = "Enter wait time in seconds (default: 30)...",
+    Callback = function(value)
+        local duration = tonumber(value)
+        if duration and duration >= 0.1 then
+            vuln.setWaitDuration(duration)
+        end
+    end
+})
+
 VulnTab:Divider()
 
 VulnTab:Section({
