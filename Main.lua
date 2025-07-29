@@ -1253,21 +1253,27 @@ VulnTab:Section({
         Title = "-- Zen Auto --"
     })
 
-VulnTab:Button({
+VulnTab:Toggle({
     Title = "Zen Aura Submit",
-    Desc = "Submit all plants for Zen Aura",
+    Desc = "Auto-submit all plants for Zen Aura",
     Icon = "leaf",
-    Callback = function()
-        game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
+        end
     end
 })
 
-VulnTab:Button({
+VulnTab:Toggle({
     Title = "Zen Quest Submit", 
-    Desc = "Submit all plants for Zen Quest",
+    Desc = "Auto-submit all plants for Zen Quest",
     Icon = "target",
-    Callback = function()
-        game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
+    Default = false,
+    Callback = function(Value)
+        if Value then
+            game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
+        end
     end
 })
 
