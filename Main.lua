@@ -1291,27 +1291,6 @@ VulnTab:Toggle({
     end
 })
 
-VulnTab:Toggle({
-    Title = "Zen Quest Submit", 
-    Desc = "Auto-submit all plants for Zen Quest every 5 seconds",
-    Icon = "target",
-    Default = false,
-    Callback = function(Value)
-        if Value then
-            ZenQuestLoop = task.spawn(function()
-                while ZenQuestLoop do
-                    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
-                    task.wait(5)
-                end
-            end)
-        else
-            if ZenQuestLoop then
-                task.cancel(ZenQuestLoop)
-                ZenQuestLoop = nil
-            end
-        end
-    end
-})
 
 -- ===========================================
 -- MISC TAB (Updated for WindUI)
