@@ -106,8 +106,8 @@ local autoSellEnabled = false
 local sellDelay = 1
 local isProcessing = false
 local autoSellConnection
-local ZenAuraLoop = nil
-local ZenQuestLoop = nil
+local ZenAuraEnabled = false
+local ZenQuestEnabled = false
 
 -- Sprinkler variables
 local sprinklerTypes = {"Basic Sprinkler", "Advanced Sprinkler", "Master Sprinkler", "Godly Sprinkler", "Honey Sprinkler", "Chocolate Sprinkler"}
@@ -1261,18 +1261,32 @@ VulnTab:Toggle({
     Icon = "leaf",
     Default = false,
     Callback = function(Value)
+        ZenAuraEnabled = Value
         if Value then
-            ZenAuraLoop = task.spawn(function()
-                while ZenAuraLoop do
+            task.spawn(function()
+                while ZenAuraEnabled do
                     game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
                     task.wait(5)
                 end
             end)
-        else
-            if ZenAuraLoop then
-                task.cancel(ZenAuraLoop)
-                ZenAuraLoop = nil
-            end
+        end
+    end
+})
+
+VulnTab:Toggle({
+    Title = "Zen Quest Submit", 
+    Desc = "Auto-submit all plants for Zen Quest every 5 seconds",
+    Icon = "target",
+    Default = false,
+    Callback = function(Value)
+        ZenQuestEnabled = Value
+        if Value then
+            task.spawn(function()
+                while ZenQuestEnabled do
+                    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
+                    task.wait(5)
+                end
+            end)
         end
     end
 })
