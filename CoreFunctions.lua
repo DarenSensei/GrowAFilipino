@@ -41,18 +41,6 @@ local Mutations = {
     Wet = 2, Windstruck = 2, Wiltproof = 4, Zombified = 25
 }
 
-local petTypes = { 
-    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
-    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
-    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog", 
-    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus", 
-    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee", 
-    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox", 
-    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal", 
-    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki", 
-    "Tarantula Hawk", "Toucan", "Wasp" 
-}
-
 --// Configuration
 local selectedCrops = {}
 local whitelistMutations = {}
@@ -116,6 +104,19 @@ end)
 -- ==========================================
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
+
+-- Pet Types Table:
+local petTypes = { 
+    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
+    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
+    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog", 
+    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus", 
+    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee", 
+    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox", 
+    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal", 
+    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki", 
+    "Tarantula Hawk", "Toucan", "Wasp" 
+}
 
 -- Updated Functions:
 local Sell_Item = ReplicatedStorage.GameEvents.Sell_Item
@@ -192,43 +193,26 @@ end
 
 function CoreFunctions.setSelectedPets(pets)
     selectedPets = pets or {}
-    
-    -- Stop existing loop
-    if autoSellLoop then
-        autoSellEnabled = false
-        task.wait(0.1) -- Let current loop finish
+end
+
+function CoreFunctions.autoSellSelectedPets()
+    if not autoSellEnabled or not next(selectedPets) then
+        return
     end
     
-    -- Start new loop if pets are selected
-    if next(selectedPets) then
-        autoSellEnabled = true
-        autoSellLoop = task.spawn(function()
-            while autoSellEnabled and next(selectedPets) do
-                -- Check if "All Pets" is selected
-                local sellAllPets = selectedPets["All Pets"]
-                
-                if sellAllPets then
-                    -- Sell all pet types
-                    for _, petType in pairs(petTypes or {}) do
-                        if autoSellEnabled then
-                            CoreFunctions.autoSellPet(petType)
-                        end
-                    end
-                else
-                    -- Sell only selected pets
-                    for petType, _ in pairs(selectedPets) do
-                        if autoSellEnabled then
-                            CoreFunctions.autoSellPet(petType)
-                        end
-                    end
-                end
-                
-                task.wait(0.5)
-            end
-        end)
+    -- Check if "All Pets" is selected
+    local sellAllPets = selectedPets["All Pets"]
+    
+    if sellAllPets then
+        -- Sell all pet types
+        for _, petType in pairs(petTypes or {}) do
+            CoreFunctions.autoSellPet(petType)
+        end
     else
-        autoSellEnabled = false
-        autoSellLoop = nil
+        -- Sell only selected pets
+        for petType, _ in pairs(selectedPets) do
+            CoreFunctions.autoSellPet(petType)
+        end
     end
 end
 
