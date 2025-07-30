@@ -117,9 +117,11 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
+-- Updated Functions:
 local Sell_Item = ReplicatedStorage.GameEvents.Sell_Item
-local selectedPet = petTypes and petTypes[1] or nil -- Fixed: Initialize with first pet type
+local selectedPets = {} -- Changed to table for multiple pets
 local autoSellEnabled = false
+local autoSellLoop = nil -- Track the loop coroutine
 local originalPosition = nil
 local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
 
@@ -129,7 +131,7 @@ function CoreFunctions.findPetInBackpack(petType)
     if not backpack then return nil end
     
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petType)) then -- Fixed: Case-insensitive search
+        if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petType)) then
             return item
         end
     end
@@ -149,10 +151,7 @@ function CoreFunctions.teleportToSell()
         return false
     end
     
-    -- Save original position
     originalPosition = player.Character.HumanoidRootPart.CFrame
-    
-    -- Teleport to sell position
     player.Character.HumanoidRootPart.CFrame = CFrame.new(sellPosition)
     return true
 end
@@ -169,13 +168,12 @@ function CoreFunctions.returnToOriginalPosition()
     return false
 end
 
-function CoreFunctions.autoSellPet()
-    if not autoSellEnabled or not selectedPet then -- Fixed: Check for nil instead of string comparison
+function CoreFunctions.autoSellPet(petType)
+    if not autoSellEnabled then
         return
     end
     
-    task.wait(0.1) -- Fixed: Use task.wait instead of wait
-    local pet = CoreFunctions.findPetInBackpack(selectedPet)
+    local pet = CoreFunctions.findPetInBackpack(petType)
     
     if pet then
         if CoreFunctions.teleportToSell() then
@@ -192,20 +190,45 @@ function CoreFunctions.autoSellPet()
     end
 end
 
-function CoreFunctions.toggleAutoSell(enabled)
-    autoSellEnabled = enabled
+function CoreFunctions.setSelectedPets(pets)
+    selectedPets = pets or {}
     
-    if enabled then
-        -- Start auto sell loop
-        task.spawn(function() -- Fixed: Use task.spawn instead of spawn
-            while autoSellEnabled do
-                CoreFunctions.autoSellPet()
-                task.wait(1) -- Fixed: Use task.wait instead of wait
+    -- Stop existing loop
+    if autoSellLoop then
+        autoSellEnabled = false
+        task.wait(0.1) -- Let current loop finish
+    end
+    
+    -- Start new loop if pets are selected
+    if next(selectedPets) then
+        autoSellEnabled = true
+        autoSellLoop = task.spawn(function()
+            while autoSellEnabled and next(selectedPets) do
+                -- Check if "All Pets" is selected
+                local sellAllPets = selectedPets["All Pets"]
+                
+                if sellAllPets then
+                    -- Sell all pet types
+                    for _, petType in pairs(petTypes or {}) do
+                        if autoSellEnabled then
+                            CoreFunctions.autoSellPet(petType)
+                        end
+                    end
+                else
+                    -- Sell only selected pets
+                    for petType, _ in pairs(selectedPets) do
+                        if autoSellEnabled then
+                            CoreFunctions.autoSellPet(petType)
+                        end
+                    end
+                end
+                
+                task.wait(0.5)
             end
         end)
-        return true, "Auto Sell Pet Enabled"
     else
-        return true, "Auto Sell Pet Disabled"
+        autoSellEnabled = false
+        autoSellLoop = nil
     end
 end
 
@@ -213,13 +236,10 @@ function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
 
-function CoreFunctions.setPetType(petType)
-    selectedPet = petType
-end
-
 function CoreFunctions.getPetTypes()
     return petTypes
 end
+
 -- ==========================================
 -- AUTO-BUY FUNCTIONS
 -- ==========================================
