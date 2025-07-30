@@ -38,14 +38,19 @@ AutoBuy.zenItems = {
     "Zen Seed Pack",
     "Zen Egg",
     "Hot Spring",
+    "Zen Sand",
+    "Tranquil Radar",
+    "Corrupt Radar",
     "Zen Flare",
     "Zen Crate",
+    "Sakura Bush",
     "Soft Sunshine",
     "Koi",
     "Zen Gnome Crate",
     "Spiked Mango",
     "Pet Shard Tranquil",
-    "Zen Sand"
+    "Pet Shard Corrupted",
+    "Raiju"
 }
 
 -- Item Lists - Merchant Shop
@@ -118,7 +123,8 @@ AutoBuy.seedOptions = {
     "Ember Lily",
     "Sugar Apple",
     "Burning Bud",
-    "Giant Pinecone"
+    "Giant Pinecone",
+    "Elder Strawberry"
 }
 
 -- Helper function to get remote events safely
