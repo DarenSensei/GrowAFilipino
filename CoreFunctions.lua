@@ -24,38 +24,6 @@ local sprinklerTypes = {
 }
 local selectedSprinklers = {}
 
-local zenItems = {
-    "Zen Seed Pack",
-    "Zen Egg",
-    "Hot Spring",
-    "Zen Sand",
-    "Tranquil Radar",
-    "Corrupt Radar",
-    "Zen Flare",
-    "Zen Crate",
-    "Sakura Bush",
-    "Soft Sunshine",
-    "Koi",
-    "Zen Gnome Crate",
-    "Spiked Mango",
-    "Pet Shard Tranquil",
-    "Pet Shard Corrupted",
-    "Raiju"
-}
-
-local merchantItems = {
-    "Star Caller",
-    "Night Staff",
-    "Bee Egg",
-    "Honey Sprinkler",
-    "Flower Seed Pack",
-    "Cloudtouched Spray",
-    "Mutation Spray Disco",
-    "Mutation Spray Verdant",
-    "Mutation Spray Windstruck",
-    "Mutation Spray Wet"
-}
-
 local LocalPlayer = Players.LocalPlayer
 local Farms = workspace.Farm
 
