@@ -206,24 +206,34 @@ end
 
 function CoreFunctions.autoSellPet(petName)
     if not autoSellEnabled then
-        return
+        return false
     end
     
+    -- Step 1: Search for pet in backpack
     local pet = CoreFunctions.findPetInBackpack(petName)
     
     if pet then
-        if CoreFunctions.teleportToSell() then
-            task.wait(0.1)
+        -- Step 2: Equip the pet first
+        if CoreFunctions.equipPet(pet) then
+            task.wait(0.2) -- Wait for equip
             
-            if CoreFunctions.equipPet(pet) then
-                task.wait(0.3)
-                CoreFunctions.sellItem()
+            -- Step 3: Teleport to sell location
+            if CoreFunctions.teleportToSell() then
+                task.wait(0.3) -- Wait for teleport
                 
-                task.wait(0.1)
+                -- Step 4: Fire sell event
+                CoreFunctions.sellItem()
+                task.wait(0.2) -- Wait for sell
+                
+                -- Step 5: Return to original position
                 CoreFunctions.returnToOriginalPosition()
+                task.wait(0.1) -- Wait before next iteration
+                
+                return true
             end
         end
     end
+    return false
 end
 
 function CoreFunctions.setSelectedPets(pets)
@@ -244,16 +254,27 @@ function CoreFunctions.autoSellSelectedPets()
         local backpack = player:FindFirstChild("Backpack")
         if not backpack then return end
         
+        -- Loop through all pets in backpack
         for _, item in pairs(backpack:GetChildren()) do
             if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
                 local cleanName = CoreFunctions.extractPetName(item.Name)
-                CoreFunctions.autoSellPet(cleanName)
+                local success = CoreFunctions.autoSellPet(cleanName)
+                if success then
+                    -- Small delay between selling different pets
+                    task.wait(0.1)
+                end
             end
         end
     else
-        -- Sell only selected pets
+        -- Sell only selected pets (loop through each selected pet type)
         for petName, _ in pairs(selectedPets) do
-            CoreFunctions.autoSellPet(petName)
+            if petName ~= "All Pets" then
+                local success = CoreFunctions.autoSellPet(petName)
+                if success then
+                    -- Small delay between selling different pets
+                    task.wait(0.1)
+                end
+            end
         end
     end
 end
