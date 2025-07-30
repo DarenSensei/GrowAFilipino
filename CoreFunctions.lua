@@ -60,7 +60,7 @@ local blacklistMutations = {}
 local autoHarvestEnabled = false
 local autoHarvestConnection = nil
 
-local selectedPet = "Select Pet"
+local selectedPet = petTypes
 local autoSellEnabled = false
 local originalPosition = nil
 local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
