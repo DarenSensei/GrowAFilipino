@@ -60,11 +60,6 @@ local blacklistMutations = {}
 local autoHarvestEnabled = false
 local autoHarvestConnection = nil
 
-local selectedPet = petTypes
-local autoSellEnabled = false
-local originalPosition = nil
-local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
-
 -- Pet Control Variables
 local selectedPets = {}
 local excludedPets = {}
@@ -122,13 +117,19 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
+local Sell_Item = ReplicatedStorage.GameEvents.Sell_Item
+local selectedPet = petTypes and petTypes[1] or nil -- Fixed: Initialize with first pet type
+local autoSellEnabled = false
+local originalPosition = nil
+local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
+
 function CoreFunctions.findPetInBackpack(petType)
     if not player.Character then return nil end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return nil end
     
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(item.Name, petType) then
+        if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petType)) then -- Fixed: Case-insensitive search
             return item
         end
     end
@@ -169,22 +170,22 @@ function CoreFunctions.returnToOriginalPosition()
 end
 
 function CoreFunctions.autoSellPet()
-    if not autoSellEnabled or selectedPet == "Select Pet" then
+    if not autoSellEnabled or not selectedPet then -- Fixed: Check for nil instead of string comparison
         return
     end
     
-    wait(0.1)
+    task.wait(0.1) -- Fixed: Use task.wait instead of wait
     local pet = CoreFunctions.findPetInBackpack(selectedPet)
     
     if pet then
         if CoreFunctions.teleportToSell() then
-            wait(0.1)
+            task.wait(0.1)
             
             if CoreFunctions.equipPet(pet) then
-                wait(0.3)
+                task.wait(0.3)
                 CoreFunctions.sellItem()
                 
-                wait(0.1)
+                task.wait(0.1)
                 CoreFunctions.returnToOriginalPosition()
             end
         end
@@ -196,10 +197,10 @@ function CoreFunctions.toggleAutoSell(enabled)
     
     if enabled then
         -- Start auto sell loop
-        spawn(function()
+        task.spawn(function() -- Fixed: Use task.spawn instead of spawn
             while autoSellEnabled do
                 CoreFunctions.autoSellPet()
-                wait(1) -- Wait 1 second between attempts
+                task.wait(1) -- Fixed: Use task.wait instead of wait
             end
         end)
         return true, "Auto Sell Pet Enabled"
@@ -219,7 +220,6 @@ end
 function CoreFunctions.getPetTypes()
     return petTypes
 end
-
 -- ==========================================
 -- AUTO-BUY FUNCTIONS
 -- ==========================================
