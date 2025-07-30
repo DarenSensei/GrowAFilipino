@@ -41,12 +41,29 @@ local Mutations = {
     Wet = 2, Windstruck = 2, Wiltproof = 4, Zombified = 25
 }
 
+local petTypes = { 
+    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
+    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
+    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog", 
+    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus", 
+    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee", 
+    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox", 
+    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal", 
+    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki", 
+    "Tarantula Hawk", "Toucan", "Wasp" 
+}
+
 --// Configuration
 local selectedCrops = {}
 local whitelistMutations = {}
 local blacklistMutations = {}
 local autoHarvestEnabled = false
 local autoHarvestConnection = nil
+
+local selectedPet = "Select Pet"
+local autoSellEnabled = false
+local originalPosition = nil
+local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
 
 -- Pet Control Variables
 local selectedPets = {}
@@ -100,6 +117,108 @@ end)
 pcall(function()
     objectsFolder = Workspace:WaitForChild("Farm", 5):WaitForChild("Farm", 5):WaitForChild("Important", 5):WaitForChild("Objects_Physical", 5)
 end)
+
+-- ==========================================
+-- AUTO-SELL PET FUNCTIONS
+-- ==========================================
+
+function CoreFunctions.findPetInBackpack(petType)
+    if not player.Character then return nil end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return nil end
+    
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and string.find(item.Name, petType) then
+            return item
+        end
+    end
+    return nil
+end
+
+function CoreFunctions.equipPet(pet)
+    if pet and player.Character then
+        pet.Parent = player.Character
+        return true
+    end
+    return false
+end
+
+function CoreFunctions.teleportToSell()
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    -- Save original position
+    originalPosition = player.Character.HumanoidRootPart.CFrame
+    
+    -- Teleport to sell position
+    player.Character.HumanoidRootPart.CFrame = CFrame.new(sellPosition)
+    return true
+end
+
+function CoreFunctions.sellItem()
+    Sell_Item:FireServer()
+end
+
+function CoreFunctions.returnToOriginalPosition()
+    if originalPosition and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+        player.Character.HumanoidRootPart.CFrame = originalPosition
+        return true
+    end
+    return false
+end
+
+function CoreFunctions.autoSellPet()
+    if not autoSellEnabled or selectedPet == "Select Pet" then
+        return
+    end
+    
+    wait(0.1)
+    local pet = CoreFunctions.findPetInBackpack(selectedPet)
+    
+    if pet then
+        if CoreFunctions.teleportToSell() then
+            wait(0.1)
+            
+            if CoreFunctions.equipPet(pet) then
+                wait(0.3)
+                CoreFunctions.sellItem()
+                
+                wait(0.1)
+                CoreFunctions.returnToOriginalPosition()
+            end
+        end
+    end
+end
+
+function CoreFunctions.toggleAutoSell(enabled)
+    autoSellEnabled = enabled
+    
+    if enabled then
+        -- Start auto sell loop
+        spawn(function()
+            while autoSellEnabled do
+                CoreFunctions.autoSellPet()
+                wait(1) -- Wait 1 second between attempts
+            end
+        end)
+        return true, "Auto Sell Pet Enabled"
+    else
+        return true, "Auto Sell Pet Disabled"
+    end
+end
+
+function CoreFunctions.getAutoSellStatus()
+    return autoSellEnabled
+end
+
+function CoreFunctions.setPetType(petType)
+    selectedPet = petType
+end
+
+function CoreFunctions.getPetTypes()
+    return petTypes
+end
 
 -- ==========================================
 -- AUTO-BUY FUNCTIONS
