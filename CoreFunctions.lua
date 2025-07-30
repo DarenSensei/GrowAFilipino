@@ -28,14 +28,19 @@ local zenItems = {
     "Zen Seed Pack",
     "Zen Egg",
     "Hot Spring",
+    "Zen Sand",
+    "Tranquil Radar",
+    "Corrupt Radar",
     "Zen Flare",
     "Zen Crate",
+    "Sakura Bush",
     "Soft Sunshine",
     "Koi",
     "Zen Gnome Crate",
     "Spiked Mango",
     "Pet Shard Tranquil",
-    "Zen Sand"
+    "Pet Shard Corrupted",
+    "Raiju"
 }
 
 local merchantItems = {
