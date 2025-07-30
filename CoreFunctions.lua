@@ -105,19 +105,6 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
--- Pet Types Table:
-local petTypes = { 
-    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
-    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
-    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog", 
-    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus", 
-    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee", 
-    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox", 
-    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal", 
-    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki", 
-    "Tarantula Hawk", "Toucan", "Wasp" 
-}
-
 -- Updated Functions:
 local Sell_Item = ReplicatedStorage.GameEvents.Sell_Item
 local selectedPets = {} -- Changed to table for multiple pets
@@ -126,14 +113,62 @@ local autoSellLoop = nil -- Track the loop coroutine
 local originalPosition = nil
 local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
 
-function CoreFunctions.findPetInBackpack(petType)
+-- Function to extract clean pet name (remove weight and brackets)
+function CoreFunctions.extractPetName(fullName)
+    -- Remove weight information (anything in brackets)
+    local cleanName = string.gsub(fullName, "%s*%[.-%]", "")
+    
+    return cleanName
+end
+
+-- Function to scan backpack for pets
+function CoreFunctions.scanBackpackForPets()
+    local pets = {}
+    local uniquePets = {} -- To avoid duplicates
+    
+    if not player.Character then return pets end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return pets end
+    
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+            -- Extract clean pet name
+            local cleanName = CoreFunctions.extractPetName(item.Name)
+            
+            -- Only add if not already in the list
+            if not uniquePets[cleanName] then
+                uniquePets[cleanName] = true
+                table.insert(pets, cleanName)
+            end
+        end
+    end
+    
+    -- Sort pets alphabetically
+    table.sort(pets)
+    
+    -- Add "All Pets" option at the beginning
+    table.insert(pets, 1, "All Pets")
+    
+    return pets
+end
+
+-- Function to get current pets and update dropdown
+function CoreFunctions.getCurrentPets()
+    return CoreFunctions.scanBackpackForPets()
+end
+
+function CoreFunctions.findPetInBackpack(petName)
     if not player.Character then return nil end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return nil end
     
+    -- Look for pets that match the clean name
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petType)) then
-            return item
+        if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+            local cleanItemName = CoreFunctions.extractPetName(item.Name)
+            if string.lower(cleanItemName) == string.lower(petName) then
+                return item
+            end
         end
     end
     return nil
@@ -169,12 +204,12 @@ function CoreFunctions.returnToOriginalPosition()
     return false
 end
 
-function CoreFunctions.autoSellPet(petType)
+function CoreFunctions.autoSellPet(petName)
     if not autoSellEnabled then
         return
     end
     
-    local pet = CoreFunctions.findPetInBackpack(petType)
+    local pet = CoreFunctions.findPetInBackpack(petName)
     
     if pet then
         if CoreFunctions.teleportToSell() then
@@ -204,24 +239,27 @@ function CoreFunctions.autoSellSelectedPets()
     local sellAllPets = selectedPets["All Pets"]
     
     if sellAllPets then
-        -- Sell all pet types
-        for _, petType in pairs(petTypes or {}) do
-            CoreFunctions.autoSellPet(petType)
+        -- Get current pets from backpack and sell all
+        if not player.Character then return end
+        local backpack = player:FindFirstChild("Backpack")
+        if not backpack then return end
+        
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+                local cleanName = CoreFunctions.extractPetName(item.Name)
+                CoreFunctions.autoSellPet(cleanName)
+            end
         end
     else
         -- Sell only selected pets
-        for petType, _ in pairs(selectedPets) do
-            CoreFunctions.autoSellPet(petType)
+        for petName, _ in pairs(selectedPets) do
+            CoreFunctions.autoSellPet(petName)
         end
     end
 end
 
 function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
-end
-
-function CoreFunctions.getPetTypes()
-    return petTypes
 end
 
 -- ==========================================
