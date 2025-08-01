@@ -595,11 +595,51 @@ function CoreFunctions.harvestPlant(Plant)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end -- Only harvest if prompt is enabled
     
+    -- Method 1: Try setting MaxActivationDistance to a very large number
+    local originalMaxDistance = Prompt.MaxActivationDistance
+    Prompt.MaxActivationDistance = 9999999
+    
     local success = pcall(function()
         fireproximityprompt(Prompt)
     end)
     
-    return success
+    -- Restore original distance
+    Prompt.MaxActivationDistance = originalMaxDistance
+    
+    if success then
+        return true
+    end
+    
+    -- Method 2: Try moving the prompt closer temporarily
+    local character = LocalPlayer.Character
+    
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = character.HumanoidRootPart
+        local promptParent = Prompt.Parent
+        local originalCFrame = promptParent.CFrame
+        
+        -- Temporarily move the prompt's parent close to player
+        if promptParent and promptParent:IsA("BasePart") then
+            promptParent.CFrame = humanoidRootPart.CFrame + Vector3.new(0, 0, -5)
+            
+            task.wait(0.05)
+            local success2 = pcall(function()
+                fireproximityprompt(Prompt)
+            end)
+            task.wait(0.05)
+            
+            -- Move it back
+            promptParent.CFrame = originalCFrame
+            return success2
+        end
+    end
+    
+    -- Method 3: Fallback - just try firing it normally
+    local success3 = pcall(function()
+        fireproximityprompt(Prompt)
+    end)
+    
+    return success3
 end
 
 function CoreFunctions.canHarvest(Plant)
