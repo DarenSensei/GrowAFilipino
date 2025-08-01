@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN
+-- UPDATED AGAIN AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -590,17 +590,18 @@ function CoreFunctions.getCurrentFarm()
     return nil
 end
 
+function CoreFunctions.harvestPlant(Plant)
+    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
+    --// Check if it can be harvested
+    if not Prompt then return false end
+    fireproximityprompt(Prompt)
+    return true
+end
+
 function CoreFunctions.canHarvest(Plant)
     local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end
-    return true
-end
-
-function CoreFunctions.harvestPlant(Plant)
-    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
-    if not Prompt then return false end
-    fireproximityprompt(Prompt)
     return true
 end
 
@@ -650,51 +651,29 @@ function CoreFunctions.isTargetPlant(Plant)
     return true
 end
 
-function CoreFunctions.getHarvestTarget(Fruit)
-    -- Try to find PrimaryPart first
-    if Fruit.PrimaryPart then
-        return Fruit.PrimaryPart
-    end
-    
-    -- If no PrimaryPart, try to find Base
-    local Base = Fruit:FindFirstChild("Base")
-    if Base then
-        return Base
-    end
-    
-    -- If neither found, return nil
-    return nil
-end
-
-function CoreFunctions.collectHarvestable(Parent, Plants, IgnoreDistance)
+function CoreFunctions.collectHarvestable(Parent, Plants)
     local Character = LocalPlayer.Character
     if not Character then return Plants end
     
     local PlayerPosition = Character:GetPivot().Position
     
     for _, Plant in next, Parent:GetChildren() do
-        --// Handle Fruits recursively
+        --// Fruits
         local Fruits = Plant:FindFirstChild("Fruits")
         if Fruits then
-            CoreFunctions.collectHarvestable(Fruits, Plants, IgnoreDistance)
+            CoreFunctions.collectHarvestable(Fruits, Plants)
         end
         
-        --// Distance check
-        if not IgnoreDistance then
-            local PlantPosition = Plant:GetPivot().Position
-            local Distance = (PlayerPosition - PlantPosition).Magnitude
-            if Distance > 15 then
-                continue
-            end
-        end
+        --// Distance check (always ignore distance - built in)
+        -- Distance checking is disabled by default
         
-        --// Variant ignore check
+        --// Ignore check
         local Variant = Plant:FindFirstChild("Variant")
         if Variant and HarvestIgnores and HarvestIgnores[Variant.Value] then
             continue
         end
         
-        --// Check if plant can be harvested and matches target criteria
+        --// Collect
         if CoreFunctions.canHarvest(Plant) and CoreFunctions.isTargetPlant(Plant) then
             table.insert(Plants, Plant)
         end
@@ -702,7 +681,7 @@ function CoreFunctions.collectHarvestable(Parent, Plants, IgnoreDistance)
     return Plants
 end
 
-function CoreFunctions.getCropsToHarvest(IgnoreDistance)
+function CoreFunctions.getHarvestablePlants()
     local Plants = {}
     local MyFarm = CoreFunctions.getCurrentFarm()
     if not MyFarm then return Plants end
@@ -713,25 +692,20 @@ function CoreFunctions.getCropsToHarvest(IgnoreDistance)
     local PlantsPhysical = Important:FindFirstChild("Plants_Physical")
     if not PlantsPhysical then return Plants end
     
-    return CoreFunctions.collectHarvestable(PlantsPhysical, Plants, IgnoreDistance)
+    CoreFunctions.collectHarvestable(PlantsPhysical, Plants)
+    return Plants
 end
 
-function CoreFunctions.autoHarvest(IgnoreDistance)
-    if not autoHarvestEnabled then return end
-    
-    local Plants = CoreFunctions.getCropsToHarvest(IgnoreDistance)
-    if #Plants == 0 then return end
-    
-    local harvestedCount = 0
-    local maxPlantsPerCycle = 50
-    
-    for i, Plant in next, Plants do
-        if i > maxPlantsPerCycle then break end
-        
-        if CoreFunctions.harvestPlant(Plant) then
-            harvestedCount = harvestedCount + 1
-        end
+function CoreFunctions.harvestPlants()
+    local Plants = CoreFunctions.getHarvestablePlants()
+    for _, Plant in next, Plants do
+        CoreFunctions.harvestPlant(Plant)
     end
+end
+
+function CoreFunctions.autoHarvest()
+    if not autoHarvestEnabled then return end
+    CoreFunctions.harvestPlants()
 end
 
 function CoreFunctions.getCropTypes()
@@ -785,7 +759,7 @@ function CoreFunctions.getAutoHarvestStatus()
     return autoHarvestEnabled
 end
 
-function CoreFunctions.toggleAutoHarvest(enabled, ignoreDistance)
+function CoreFunctions.toggleAutoHarvest(enabled)
     autoHarvestEnabled = enabled
     
     if enabled then
@@ -796,7 +770,7 @@ function CoreFunctions.toggleAutoHarvest(enabled, ignoreDistance)
         
         autoHarvestConnection = task.spawn(function()
             while autoHarvestEnabled do
-                CoreFunctions.autoHarvest(ignoreDistance)
+                CoreFunctions.autoHarvest()
                 task.wait(2)
             end
         end)
@@ -811,6 +785,11 @@ function CoreFunctions.toggleAutoHarvest(enabled, ignoreDistance)
         
         return true, "Auto Harvest Stopped"
     end
+end
+
+-- Legacy function for backward compatibility
+function CoreFunctions.getCropsToHarvest()
+    return CoreFunctions.getHarvestablePlants()
 end
 -- ==========================================
 -- SPRINKLER FUNCTIONS
