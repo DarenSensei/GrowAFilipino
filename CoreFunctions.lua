@@ -1,6 +1,6 @@
 -- Complete CoreFunctions for Grow A Garden Script Loader
 -- External Module for MAIN
--- UPDATED AGAIN
+-- UPDATED AGAIN AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -171,12 +171,18 @@ function CoreFunctions.findAndEquipPet(petType)
         return true
     end
     
-    -- Then try exact match with case insensitive
+    -- Try to find pet with partial matching but more precise
     local lowerPetType = string.lower(petType)
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") then
             local lowerItemName = string.lower(item.Name)
-            if lowerItemName == lowerPetType then
+            
+            -- Check if the pet name matches at word boundaries
+            -- This prevents "Kodama" from matching "Corrupted Kodama"
+            if lowerItemName == lowerPetType or 
+               string.match(lowerItemName, "^" .. lowerPetType .. "%s") or
+               string.match(lowerItemName, "%s" .. lowerPetType .. "$") or
+               string.match(lowerItemName, "%s" .. lowerPetType .. "%s") then
                 item.Parent = player.Character
                 return true
             end
@@ -247,7 +253,12 @@ local function autoSellLoop()
             if shouldSell then
                 local lowerPetName = string.lower(petName)
                 local lowerEquippedName = string.lower(equippedPet.Name)
-                if lowerEquippedName == lowerPetName then
+                
+                -- Same precise matching logic for equipped pets
+                if lowerEquippedName == lowerPetName or 
+                   string.match(lowerEquippedName, "^" .. lowerPetName .. "%s") or
+                   string.match(lowerEquippedName, "%s" .. lowerPetName .. "$") or
+                   string.match(lowerEquippedName, "%s" .. lowerPetName .. "%s") then
                     shouldSellEquipped = true
                     break
                 end
