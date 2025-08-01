@@ -105,103 +105,180 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
-local player = game:GetService("Players").LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-local petTypes = { 
-    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
-    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
-    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog", 
-    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus", 
-    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee", 
-    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox", 
-    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal", 
-    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki", 
-    "Tarantula Hawk", "Toucan", "Wasp" 
+-- Player
+local player = Players.LocalPlayer
+
+-- Remote
+local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE -- RemoteEvent 
+
+-- Pet list
+local petlist = {
+    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara",
+    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee",
+    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog",
+    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus",
+    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee",
+    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox",
+    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal",
+    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki",
+    "Tarantula Hawk", "Toucan", "Wasp"
 }
 
-local selectedPets = {}
+-- Auto sell variables
 local autoSellEnabled = false
+local selectedPetsToSell = {}
+local autoSellConnection = nil
 
--- Functions will be added to external CoreFunctions
+-- Function to get pet list
+function CoreFunctions.getPetList()
+    return petlist
+end
 
-function CoreFunctions.findPetInBackpack(petName)
-    if not player.Character then return nil end
+-- Function to get selected pets
+function CoreFunctions.getSelectedPets()
+    return selectedPetsToSell
+end
+
+-- Function to set selected pets
+function CoreFunctions.setSelectedPets(pets)
+    selectedPetsToSell = pets or {}
+    return true, "Selected pets updated"
+end
+
+-- Function to get auto sell status
+function CoreFunctions.getAutoSellStatus()
+    return autoSellEnabled
+end
+
+-- Function to find and equip pet
+function CoreFunctions.findAndEquipPet(petType)
+    if not player.Character then return false end
     local backpack = player:FindFirstChild("Backpack")
-    if not backpack then return nil end
+    if not backpack then return false end
     
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petName)) then
-            return item
-        end
-    end
-    return nil
-end
-
-function CoreFunctions.equipPet(pet)
-    if pet and player.Character then
-        pet.Parent = player.Character
-        return true
-    end
-    return false
-end
-
-function CoreFunctions.sellPet()
-    SellPet_RE:FireServer()
-end
-
-function CoreFunctions.autoSellPet(petName)
-    if not autoSellEnabled then
-        return false
-    end
-    
-    local pet = CoreFunctions.findPetInBackpack(petName)
-    
-    if pet then
-        if CoreFunctions.equipPet(pet) then
-            task.wait(0.2)
-            CoreFunctions.sellPet()
-            task.wait(0.1)
+        if item:IsA("Tool") and string.find(item.Name, petType) then
+            -- Equip the pet
+            item.Parent = player.Character
             return true
         end
     end
     return false
 end
 
-function CoreFunctions.setSelectedPets(pets)
-    selectedPets = pets or {}
-end
-
-function CoreFunctions.autoSellSelectedPets()
-    if not autoSellEnabled or not next(selectedPets) then
-        return
-    end
+-- Function to sell equipped pet
+function CoreFunctions.sellEquippedPet()
+    if not autoSellEnabled then return false, "Auto sell is disabled" end
     
-    local sellAllPets = selectedPets["All Pets"]
+    local success, error = pcall(function()
+        SellPet_RE:FireServer()
+    end)
     
-    if sellAllPets then
-        for _, petType in pairs(petTypes) do
-            local success = CoreFunctions.autoSellPet(petType)
-            if success then
-                task.wait(0.1)
-            end
-        end
+    if success then
+        return true, "Pet sold successfully"
     else
-        for petName, _ in pairs(selectedPets) do
-            if petName ~= "All Pets" then
-                local success = CoreFunctions.autoSellPet(petName)
-                if success then
-                    task.wait(0.1)
-                end
+        return false, "Error selling pet: " .. tostring(error)
+    end
+end
+
+-- Main auto sell loop function
+local function autoSellLoop()
+    if not autoSellEnabled then return end
+    
+    -- Check if any pets are selected to sell
+    local hasPetsToSell = false
+    for petName, _ in pairs(selectedPetsToSell) do
+        hasPetsToSell = true
+        break
+    end
+    
+    if not hasPetsToSell then return end
+    
+    -- Loop through selected pets and try to sell them
+    for petName, shouldSell in pairs(selectedPetsToSell) do
+        if shouldSell and autoSellEnabled then
+            -- Find and equip the pet
+            if CoreFunctions.findAndEquipPet(petName) then
+                wait(0.5) -- Small delay to ensure pet is equipped
+                -- Sell the pet
+                CoreFunctions.sellEquippedPet()
+                wait(0.5) -- Small delay between sells
             end
+        end
+        
+        -- Break if auto sell was disabled during the loop
+        if not autoSellEnabled then
+            break
         end
     end
 end
 
-function CoreFunctions.getAutoSellStatus()
-    return autoSellEnabled
+-- Function to start auto sell
+function CoreFunctions.startAutoSell()
+    if autoSellConnection then
+        autoSellConnection:Disconnect()
+    end
+    
+    autoSellConnection = RunService.Heartbeat:Connect(function()
+        if autoSellEnabled then
+            autoSellLoop()
+            wait(1) -- Wait 1 second between full cycles
+        end
+    end)
+    
+    return true, "Auto sell started"
 end
+
+-- Function to stop auto sell
+function CoreFunctions.stopAutoSell()
+    if autoSellConnection then
+        autoSellConnection:Disconnect()
+        autoSellConnection = nil
+    end
+    
+    return true, "Auto sell stopped"
+end
+
+-- Function to toggle auto sell
+function CoreFunctions.toggleAutoSell(enabled)
+    autoSellEnabled = enabled
+    
+    if enabled then
+        -- Check if pets are selected
+        local hasPetsSelected = false
+        for _ in pairs(selectedPetsToSell) do
+            hasPetsSelected = true
+            break
+        end
+        
+        if not hasPetsSelected then
+            autoSellEnabled = false
+            return false, "Please select pets to sell first!"
+        end
+        
+        return CoreFunctions.startAutoSell()
+    else
+        return CoreFunctions.stopAutoSell()
+    end
+end
+
+-- Cleanup function
+function CoreFunctions.cleanup()
+    CoreFunctions.stopAutoSell()
+    selectedPetsToSell = {}
+    autoSellEnabled = false
+end
+
+-- Auto cleanup when player leaves
+game.Players.PlayerRemoving:Connect(function(leavingPlayer)
+    if leavingPlayer == player then
+        CoreFunctions.cleanup()
+    end
+end)
 -- ==========================================
 -- SHOVEL FUNCTIONS
 -- ==========================================
