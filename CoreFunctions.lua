@@ -107,9 +107,8 @@ end)
 
 local player = game:GetService("Players").LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE -- RemoteEvent 
+local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE
 
--- Pet Types List
 local petTypes = { 
     "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara", 
     "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee", 
@@ -122,17 +121,16 @@ local petTypes = {
     "Tarantula Hawk", "Toucan", "Wasp" 
 }
 
--- Variables
-local selectedPets = {} -- Table for multiple pets
+local selectedPets = {}
 local autoSellEnabled = false
 
--- Function to find specific pet in backpack by name
+-- Functions will be added to external CoreFunctions
+
 function CoreFunctions.findPetInBackpack(petName)
     if not player.Character then return nil end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return nil end
     
-    -- Look for pets that contain the pet name
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") and string.find(string.lower(item.Name), string.lower(petName)) then
             return item
@@ -141,7 +139,6 @@ function CoreFunctions.findPetInBackpack(petName)
     return nil
 end
 
--- Function to equip pet
 function CoreFunctions.equipPet(pet)
     if pet and player.Character then
         pet.Parent = player.Character
@@ -150,71 +147,58 @@ function CoreFunctions.equipPet(pet)
     return false
 end
 
--- Function to fire sell remote
 function CoreFunctions.sellPet()
     SellPet_RE:FireServer()
 end
 
--- Function to sell individual pet
 function CoreFunctions.autoSellPet(petName)
     if not autoSellEnabled then
         return false
     end
     
-    -- Step 1: Search for pet in backpack
     local pet = CoreFunctions.findPetInBackpack(petName)
     
     if pet then
-        -- Step 2: Equip the pet
         if CoreFunctions.equipPet(pet) then
-            task.wait(0.2) -- Wait for equip
-            
-            -- Step 3: Fire sell event
+            task.wait(0.2)
             CoreFunctions.sellPet()
-            task.wait(0.1) -- Wait for sell
-            
+            task.wait(0.1)
             return true
         end
     end
     return false
 end
 
--- Function to set selected pets
 function CoreFunctions.setSelectedPets(pets)
     selectedPets = pets or {}
 end
 
--- Function to auto-sell all selected pets
 function CoreFunctions.autoSellSelectedPets()
     if not autoSellEnabled or not next(selectedPets) then
         return
     end
     
-    -- Check if "All Pets" is selected
     local sellAllPets = selectedPets["All Pets"]
     
     if sellAllPets then
-        -- Sell all pet types
         for _, petType in pairs(petTypes) do
             local success = CoreFunctions.autoSellPet(petType)
             if success then
-                task.wait(0.1) -- Small delay between selling different pets
+                task.wait(0.1)
             end
         end
     else
-        -- Sell only selected pets
         for petName, _ in pairs(selectedPets) do
             if petName ~= "All Pets" then
                 local success = CoreFunctions.autoSellPet(petName)
                 if success then
-                    task.wait(0.1) -- Small delay between selling different pets
+                    task.wait(0.1)
                 end
             end
         end
     end
 end
 
--- Function to get auto-sell status
 function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
