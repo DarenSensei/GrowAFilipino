@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN
+-- UPDATED AGAIN UPDATE
 local CoreFunctions = {}
 
 -- Services
@@ -668,12 +668,14 @@ function CoreFunctions.getHarvestTarget(Fruit)
 end
 
 function CoreFunctions.collectHarvestable(Parent, Plants)
+    -- Distance is now completely ignored in collection
     for _, Plant in next, Parent:GetChildren() do
         local Fruits = Plant:FindFirstChild("Fruits")
         if Fruits then
             CoreFunctions.collectHarvestable(Fruits, Plants)
         end
         
+        -- No distance checking - collect all harvestable plants
         if CoreFunctions.canHarvest(Plant) and CoreFunctions.isTargetPlant(Plant) then
             table.insert(Plants, Plant)
         end
@@ -697,53 +699,9 @@ end
 
 function CoreFunctions.harvestPlant(Plant)
     local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
-    if Prompt and Prompt.Enabled then -- Only harvest if prompt is enabled (plant is ready)
-        
-        -- Method 1: Try setting MaxActivationDistance to a very large number
-        local originalMaxDistance = Prompt.MaxActivationDistance
-        Prompt.MaxActivationDistance = 9999999
-        
-        local success = pcall(function()
-            fireproximityprompt(Prompt)
-        end)
-        
-        -- Restore original distance
-        Prompt.MaxActivationDistance = originalMaxDistance
-        
-        if success then
-            return true
-        end
-        
-        -- Method 2: Try moving the prompt closer temporarily
-        local Players = game:GetService("Players")
-        local LocalPlayer = Players.LocalPlayer
-        local character = LocalPlayer.Character
-        
-        if character and character:FindFirstChild("HumanoidRootPart") then
-            local humanoidRootPart = character.HumanoidRootPart
-            local promptParent = Prompt.Parent
-            local originalParent = promptParent.Parent
-            local originalCFrame = promptParent.CFrame
-            
-            -- Temporarily move the prompt's parent close to player
-            if promptParent and promptParent:IsA("BasePart") then
-                promptParent.CFrame = humanoidRootPart.CFrame + Vector3.new(0, 0, -5)
-                
-                task.wait(0.05)
-                fireproximityprompt(Prompt)
-                task.wait(0.05)
-                
-                -- Move it back
-                promptParent.CFrame = originalCFrame
-                return true
-            end
-        end
-        
-        -- Method 3: Fallback - just try firing it normally
-        fireproximityprompt(Prompt)
-        return true
-    end
-    return false
+    if not Prompt then return false end
+    fireproximityprompt(Prompt)
+    return true
 end
 
 function CoreFunctions.autoHarvest()
