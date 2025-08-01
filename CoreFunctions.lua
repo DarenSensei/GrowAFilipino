@@ -108,7 +108,7 @@ end)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-
+-- Updated
 -- Player
 local player = Players.LocalPlayer
 
@@ -132,6 +132,8 @@ local petlist = {
 local autoSellEnabled = false
 local selectedPetsToSell = {}
 local autoSellConnection = nil
+local lastSellTime = 0
+local sellCooldown = 2 -- seconds between sells
 
 -- Function to get pet list
 function CoreFunctions.getPetList()
@@ -154,17 +156,41 @@ function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
 
--- Function to find and equip pet
+-- Function to find and equip pet (improved)
 function CoreFunctions.findAndEquipPet(petType)
     if not player.Character then return false end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return false end
     
+    -- First try exact name match
+    local pet = backpack:FindFirstChild(petType)
+    if pet and pet:IsA("Tool") then
+        pet.Parent = player.Character
+        return true
+    end
+    
+    -- Then try partial match (case insensitive)
+    local lowerPetType = string.lower(petType)
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") and string.find(item.Name, petType) then
-            -- Equip the pet
-            item.Parent = player.Character
-            return true
+        if item:IsA("Tool") then
+            local lowerItemName = string.lower(item.Name)
+            if string.find(lowerItemName, lowerPetType, 1, true) then
+                item.Parent = player.Character
+                return true
+            end
+        end
+    end
+    
+    return false
+end
+
+-- Function to check if pet is equipped
+function CoreFunctions.isPetEquipped()
+    if not player.Character then return false end
+    
+    for _, item in pairs(player.Character:GetChildren()) do
+        if item:IsA("Tool") then
+            return true, item
         end
     end
     return false
@@ -173,6 +199,12 @@ end
 -- Function to sell equipped pet
 function CoreFunctions.sellEquippedPet()
     if not autoSellEnabled then return false, "Auto sell is disabled" end
+    
+    -- Check if a pet is actually equipped
+    local equipped, pet = CoreFunctions.isPetEquipped()
+    if not equipped then
+        return false, "No pet equipped"
+    end
     
     local success, error = pcall(function()
         SellPet_RE:FireServer()
@@ -185,35 +217,61 @@ function CoreFunctions.sellEquippedPet()
     end
 end
 
--- Main auto sell loop function
+-- Main auto sell loop function (improved)
 local function autoSellLoop()
     if not autoSellEnabled then return end
     
+    local currentTime = tick()
+    if currentTime - lastSellTime < sellCooldown then
+        return -- Still in cooldown
+    end
+    
     -- Check if any pets are selected to sell
     local hasPetsToSell = false
-    for petName, _ in pairs(selectedPetsToSell) do
-        hasPetsToSell = true
-        break
+    for petName, shouldSell in pairs(selectedPetsToSell) do
+        if shouldSell then
+            hasPetsToSell = true
+            break
+        end
     end
     
     if not hasPetsToSell then return end
     
-    -- Loop through selected pets and try to sell them
-    for petName, shouldSell in pairs(selectedPetsToSell) do
-        if shouldSell and autoSellEnabled then
-            -- Find and equip the pet
-            if CoreFunctions.findAndEquipPet(petName) then
-                wait(0.5) -- Small delay to ensure pet is equipped
-                -- Sell the pet
-                CoreFunctions.sellEquippedPet()
-                wait(0.5) -- Small delay between sells
+    -- Check if already equipped pet should be sold
+    local equipped, equippedPet = CoreFunctions.isPetEquipped()
+    if equipped then
+        local shouldSellEquipped = false
+        for petName, shouldSell in pairs(selectedPetsToSell) do
+            if shouldSell then
+                local lowerPetName = string.lower(petName)
+                local lowerEquippedName = string.lower(equippedPet.Name)
+                if string.find(lowerEquippedName, lowerPetName, 1, true) then
+                    shouldSellEquipped = true
+                    break
+                end
             end
         end
         
-        -- Break if auto sell was disabled during the loop
-        if not autoSellEnabled then
-            break
+        if shouldSellEquipped then
+            CoreFunctions.sellEquippedPet()
+            lastSellTime = currentTime
+            return
         end
+    end
+    
+    -- Try to equip and sell pets from backpack
+    for petName, shouldSell in pairs(selectedPetsToSell) do
+        if shouldSell and autoSellEnabled then
+            if CoreFunctions.findAndEquipPet(petName) then
+                -- Give a moment for the pet to equip
+                task.wait(0.1)
+                CoreFunctions.sellEquippedPet()
+                lastSellTime = currentTime
+                break -- Only process one pet per cycle
+            end
+        end
+        
+        if not autoSellEnabled then break end
     end
 end
 
@@ -223,13 +281,7 @@ function CoreFunctions.startAutoSell()
         autoSellConnection:Disconnect()
     end
     
-    autoSellConnection = RunService.Heartbeat:Connect(function()
-        if autoSellEnabled then
-            autoSellLoop()
-            wait(1) -- Wait 1 second between full cycles
-        end
-    end)
-    
+    autoSellConnection = RunService.Heartbeat:Connect(autoSellLoop)
     return true, "Auto sell started"
 end
 
