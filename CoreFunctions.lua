@@ -592,16 +592,28 @@ end
 
 function CoreFunctions.harvestPlant(Plant)
     local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
-    --// Check if it can be harvested
     if not Prompt then return false end
-    fireproximityprompt(Prompt)
-    return true
+    if not Prompt.Enabled then return false end -- Only harvest if prompt is enabled
+    
+    local success = pcall(function()
+        fireproximityprompt(Prompt)
+    end)
+    
+    return success
 end
 
 function CoreFunctions.canHarvest(Plant)
     local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end
+    
+    -- Additional check: see if the plant has fruits ready to harvest
+    local Fruits = Plant:FindFirstChild("Fruits")
+    if Fruits then
+        local fruitsChildren = Fruits:GetChildren()
+        if #fruitsChildren == 0 then return false end
+    end
+    
     return true
 end
 
@@ -652,28 +664,20 @@ function CoreFunctions.isTargetPlant(Plant)
 end
 
 function CoreFunctions.collectHarvestable(Parent, Plants)
-    local Character = LocalPlayer.Character
-    if not Character then return Plants end
-    
-    local PlayerPosition = Character:GetPivot().Position
-    
     for _, Plant in next, Parent:GetChildren() do
-        --// Fruits
+        --// Fruits - Handle recursive collection
         local Fruits = Plant:FindFirstChild("Fruits")
         if Fruits then
             CoreFunctions.collectHarvestable(Fruits, Plants)
         end
         
-        --// Distance check (always ignore distance - built in)
-        -- Distance checking is disabled by default
-        
-        --// Ignore check
+        --// Ignore check - Skip if variant is in HarvestIgnores
         local Variant = Plant:FindFirstChild("Variant")
         if Variant and HarvestIgnores and HarvestIgnores[Variant.Value] then
             continue
         end
         
-        --// Collect
+        --// Collect - Check if plant can be harvested and matches target criteria
         if CoreFunctions.canHarvest(Plant) and CoreFunctions.isTargetPlant(Plant) then
             table.insert(Plants, Plant)
         end
@@ -681,7 +685,7 @@ function CoreFunctions.collectHarvestable(Parent, Plants)
     return Plants
 end
 
-function CoreFunctions.getHarvestablePlants()
+function CoreFunctions.getHarvestablePlants(IgnoreDistance)
     local Plants = {}
     local MyFarm = CoreFunctions.getCurrentFarm()
     if not MyFarm then return Plants end
@@ -705,7 +709,26 @@ end
 
 function CoreFunctions.autoHarvest()
     if not autoHarvestEnabled then return end
-    CoreFunctions.harvestPlants()
+    
+    local Plants = CoreFunctions.getHarvestablePlants()
+    if #Plants == 0 then return end
+    
+    local harvestedCount = 0
+    local maxPlantsPerCycle = 50
+    
+    for i, Plant in next, Plants do
+        if i > maxPlantsPerCycle then break end
+        
+        if CoreFunctions.harvestPlant(Plant) then
+            harvestedCount = harvestedCount + 1
+        end
+        task.wait(0.1) -- Small delay between harvests
+    end
+    
+    -- Debug output
+    if harvestedCount > 0 then
+        print("Harvested", harvestedCount, "plants")
+    end
 end
 
 function CoreFunctions.getCropTypes()
@@ -788,8 +811,8 @@ function CoreFunctions.toggleAutoHarvest(enabled)
 end
 
 -- Legacy function for backward compatibility
-function CoreFunctions.getCropsToHarvest()
-    return CoreFunctions.getHarvestablePlants()
+function CoreFunctions.getCropsToHarvest(IgnoreDistance)
+    return CoreFunctions.getHarvestablePlants(IgnoreDistance)
 end
 -- ==========================================
 -- SPRINKLER FUNCTIONS
