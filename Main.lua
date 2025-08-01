@@ -1,4 +1,3 @@
--- GAGSL Hub Script (Wind UI Version) - FIXED
 repeat wait() until game:IsLoaded()
 
 -- Safe loading function with error handling
@@ -238,14 +237,14 @@ end
 -- ===========================================
 -- MAIN TAB
 -- ===========================================
-local MainTab = Window:Tab({ 
+local MainTab = Window:Tab({
     Title = "Main", 
     Icon = "house" 
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.3.2)",
-    Desc = "Added : Anti AFK, Added Elder Straberry, Added New Items in Zenshop",
+    Title = "📜Changelogs : (v.1.3.3)",
+    Desc = "Added : Auto Sell Pet (All pet include Favorited Pets)",
     color = "#c7c0b7",
 })
 
@@ -700,6 +699,52 @@ Farm:Input({
     end
 })
 
+Farm:Divider()
+
+Farm:Section({
+    Title = "-- Auto Sell Pet --"
+})
+
+-- UI Creation
+-- Pet Selection Dropdown
+local petDropdown = Farm:Dropdown({
+    Title = "Select Pets to Auto Sell",
+    Values = safeCall(CoreFunctions.getPetList, "getPetList") or {},
+    Value = {},
+    Multi = true,
+    AllowNone = true,
+    Callback = function(selectedValues)
+        local selectedPets = {}
+        
+        if selectedValues and #selectedValues > 0 then
+            for _, petName in pairs(selectedValues) do
+                selectedPets[petName] = true
+            end
+        end
+        
+        safeCall(CoreFunctions.setSelectedPets, "setSelectedPets", selectedPets)
+    end
+})
+
+-- Auto Sell Toggle
+Farm:Toggle({
+    Title = "Enable Auto Sell Pet",
+    Value = safeCall(CoreFunctions.getAutoSellStatus, "getAutoSellStatus") or false,
+    Icon = "dollar-sign",
+    Callback = function(enabled)
+        local success, message = safeCall(CoreFunctions.toggleAutoSell, "toggleAutoSell", enabled)
+        
+        -- Only notify on errors or important status changes
+        if not success then
+            WindUI:Notify({
+                Title = "Auto Sell Pet",
+                Content = message or "Error toggling auto sell",
+                Duration = 3,
+                Icon = "alert-triangle"
+            })
+        end
+    end
+})
 -- Glitch TAB
 local Tab = Window:Tab({
     Title = "Glitch",
