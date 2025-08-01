@@ -1,4 +1,3 @@
--- Complete CoreFunctions for Grow A Garden Script Loader
 -- External Module for MAIN
 -- UPDATED AGAIN AGAIN AGAIN
 local CoreFunctions = {}
