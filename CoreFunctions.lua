@@ -1,6 +1,6 @@
 -- Complete CoreFunctions for Grow A Garden Script Loader
 -- External Module for MAIN
--- UPDATED
+-- UPDATED AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -171,12 +171,12 @@ function CoreFunctions.findAndEquipPet(petType)
         return true
     end
     
-    -- Then try partial match (case insensitive)
+    -- Then try exact match with case insensitive
     local lowerPetType = string.lower(petType)
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") then
             local lowerItemName = string.lower(item.Name)
-            if string.find(lowerItemName, lowerPetType, 1, true) then
+            if lowerItemName == lowerPetType then
                 item.Parent = player.Character
                 return true
             end
@@ -247,7 +247,7 @@ local function autoSellLoop()
             if shouldSell then
                 local lowerPetName = string.lower(petName)
                 local lowerEquippedName = string.lower(equippedPet.Name)
-                if string.find(lowerEquippedName, lowerPetName, 1, true) then
+                if lowerEquippedName == lowerPetName then
                     shouldSellEquipped = true
                     break
                 end
@@ -333,6 +333,7 @@ game.Players.PlayerRemoving:Connect(function(leavingPlayer)
         CoreFunctions.cleanup()
     end
 end)
+
 -- ==========================================
 -- SHOVEL FUNCTIONS
 -- ==========================================
