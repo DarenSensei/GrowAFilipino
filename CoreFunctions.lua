@@ -1,5 +1,6 @@
 -- Complete CoreFunctions for Grow A Garden Script Loader
 -- External Module for MAIN
+-- UPDATED
 local CoreFunctions = {}
 
 -- Services
@@ -105,10 +106,11 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
+-- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
--- Updated
+
 -- Player
 local player = Players.LocalPlayer
 
@@ -133,7 +135,7 @@ local autoSellEnabled = false
 local selectedPetsToSell = {}
 local autoSellConnection = nil
 local lastSellTime = 0
-local sellCooldown = 2 -- seconds between sells
+local sellCooldown = 0.3 -- seconds between sells
 
 -- Function to get pet list
 function CoreFunctions.getPetList()
@@ -263,8 +265,8 @@ local function autoSellLoop()
     for petName, shouldSell in pairs(selectedPetsToSell) do
         if shouldSell and autoSellEnabled then
             if CoreFunctions.findAndEquipPet(petName) then
-                -- Give a moment for the pet to equip
-                task.wait(0.1)
+                -- Quick equip check
+                task.wait(0.05)
                 CoreFunctions.sellEquippedPet()
                 lastSellTime = currentTime
                 break -- Only process one pet per cycle
