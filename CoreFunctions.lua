@@ -105,13 +105,11 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
--- Updated Functions:
-local Sell_Item = ReplicatedStorage.GameEvents.Sell_Item
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE -- RemoteEvent 
 local selectedPets = {} -- Changed to table for multiple pets
 local autoSellEnabled = false
 local autoSellLoop = nil -- Track the loop coroutine
-local originalPosition = nil
-local sellPosition = Vector3.new(86.58466339111328, 2.9999997615814, 0.5647135376930237)
 
 -- Function to extract clean pet name (remove weight and brackets)
 function CoreFunctions.extractPetName(fullName)
@@ -182,26 +180,8 @@ function CoreFunctions.equipPet(pet)
     return false
 end
 
-function CoreFunctions.teleportToSell()
-    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
-        return false
-    end
-    
-    originalPosition = player.Character.HumanoidRootPart.CFrame
-    player.Character.HumanoidRootPart.CFrame = CFrame.new(sellPosition)
-    return true
-end
-
-function CoreFunctions.sellItem()
-    Sell_Item:FireServer()
-end
-
-function CoreFunctions.returnToOriginalPosition()
-    if originalPosition and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-        player.Character.HumanoidRootPart.CFrame = originalPosition
-        return true
-    end
-    return false
+function CoreFunctions.sellPet()
+    SellPet_RE:FireServer()
 end
 
 function CoreFunctions.autoSellPet(petName)
@@ -213,24 +193,15 @@ function CoreFunctions.autoSellPet(petName)
     local pet = CoreFunctions.findPetInBackpack(petName)
     
     if pet then
-        -- Step 2: Equip the pet first
+        -- Step 2: Equip the pet
         if CoreFunctions.equipPet(pet) then
             task.wait(0.2) -- Wait for equip
             
-            -- Step 3: Teleport to sell location
-            if CoreFunctions.teleportToSell() then
-                task.wait(0.3) -- Wait for teleport
-                
-                -- Step 4: Fire sell event
-                CoreFunctions.sellItem()
-                task.wait(0.2) -- Wait for sell
-                
-                -- Step 5: Return to original position
-                CoreFunctions.returnToOriginalPosition()
-                task.wait(0.1) -- Wait before next iteration
-                
-                return true
-            end
+            -- Step 3: Fire sell event
+            CoreFunctions.sellPet()
+            task.wait(0.1) -- Wait for sell
+            
+            return true
         end
     end
     return false
