@@ -107,6 +107,7 @@ end)
 -- ==========================================
 
 -- Services
+-- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -171,18 +172,35 @@ function CoreFunctions.findAndEquipPet(petType)
         return true
     end
     
-    -- Try to find pet with partial matching but more precise
+    -- Try case insensitive exact match
     local lowerPetType = string.lower(petType)
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") then
             local lowerItemName = string.lower(item.Name)
+            if lowerItemName == lowerPetType then
+                item.Parent = player.Character
+                return true
+            end
+        end
+    end
+    
+    -- If exact match fails, try smart partial matching
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            local lowerItemName = string.lower(item.Name)
             
-            -- Check if the pet name matches at word boundaries
-            -- This prevents "Kodama" from matching "Corrupted Kodama"
-            if lowerItemName == lowerPetType or 
-               string.match(lowerItemName, "^" .. lowerPetType .. "%s") or
-               string.match(lowerItemName, "%s" .. lowerPetType .. "$") or
-               string.match(lowerItemName, "%s" .. lowerPetType .. "%s") then
+            -- Split both names into words and check if petType matches any complete word sequence
+            local function matchesAsWord(fullName, targetName)
+                -- Handle hyphenated words by replacing hyphens with spaces for comparison
+                local normalizedFull = string.gsub(fullName, "%-", " ")
+                local normalizedTarget = string.gsub(targetName, "%-", " ")
+                
+                -- Check if target appears as complete word(s) in the full name
+                local pattern = "%f[%w]" .. string.gsub(normalizedTarget, "%s+", "%%s+") .. "%f[%W]"
+                return string.find(normalizedFull, pattern) ~= nil
+            end
+            
+            if matchesAsWord(lowerItemName, lowerPetType) then
                 item.Parent = player.Character
                 return true
             end
