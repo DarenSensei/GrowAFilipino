@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN AGAIN AGAIN AGAIN
+-- UPDATED AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -104,8 +104,6 @@ end)
 -- ==========================================
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
-
--- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -166,10 +164,6 @@ function CoreFunctions.findAndEquipPet(petType)
     -- First try exact name match
     local pet = backpack:FindFirstChild(petType)
     if pet and pet:IsA("Tool") then
-        -- Check if pet is favorited before equipping
-        if CoreFunctions.isPetFavorited(pet) then
-            return false -- Skip favorited pets
-        end
         pet.Parent = player.Character
         return true
     end
@@ -180,10 +174,6 @@ function CoreFunctions.findAndEquipPet(petType)
         if item:IsA("Tool") then
             local lowerItemName = string.lower(item.Name)
             if lowerItemName == lowerPetType then
-                -- Check if pet is favorited before equipping
-                if CoreFunctions.isPetFavorited(item) then
-                    continue -- Skip this pet and check next one
-                end
                 item.Parent = player.Character
                 return true
             end
@@ -207,10 +197,6 @@ function CoreFunctions.findAndEquipPet(petType)
             end
             
             if matchesAsWord(lowerItemName, lowerPetType) then
-                -- Check if pet is favorited before equipping
-                if CoreFunctions.isPetFavorited(item) then
-                    continue -- Skip this pet and check next one
-                end
                 item.Parent = player.Character
                 return true
             end
@@ -220,39 +206,8 @@ function CoreFunctions.findAndEquipPet(petType)
     return false
 end
 
--- Function to check if a pet is favorited
-function CoreFunctions.isPetFavorited(pet)
-    if not pet or not pet:IsA("Tool") then return false end
-    
-    -- Check for common favorite indicators
-    -- Method 1: Check for favorite attribute
-    if pet:GetAttribute("Favorited") == true or pet:GetAttribute("Favorite") == true then
-        return true
-    end
-    
-    -- Method 2: Check for favorite value objects
-    local favoriteValue = pet:FindFirstChild("Favorited") or pet:FindFirstChild("Favorite")
-    if favoriteValue and favoriteValue.Value == true then
-        return true
-    end
-    
-    -- Method 3: Check name for favorite indicators (like stars, hearts, etc.)
-    local name = pet.Name
-    if string.find(name, "⭐") or string.find(name, "★") or 
-       string.find(name, "❤") or string.find(name, "♥") or
-       string.find(name, "💖") or string.find(name, "🌟") or
-       string.find(name, "❣") or string.find(name, "💕") or
-       string.find(name, "💗") or string.find(name, "💘") then
-        return true
-    end
-    
-    -- Method 4: Check for "Favorite" in the name
-    if string.find(string.lower(name), "favorite") or string.find(string.lower(name), "fav") then
-        return true
-    end
-    
-    return false
-end
+-- Function to check if pet is equipped
+function CoreFunctions.isPetEquipped()
     if not player.Character then return false end
     
     for _, item in pairs(player.Character:GetChildren()) do
@@ -307,11 +262,6 @@ local function autoSellLoop()
     -- Check if already equipped pet should be sold
     local equipped, equippedPet = CoreFunctions.isPetEquipped()
     if equipped then
-        -- First check if the equipped pet is favorited
-        if CoreFunctions.isPetFavorited(equippedPet) then
-            return -- Don't sell favorited pets, skip this cycle
-        end
-        
         local shouldSellEquipped = false
         for petName, shouldSell in pairs(selectedPetsToSell) do
             if shouldSell then
