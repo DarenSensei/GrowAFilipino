@@ -1,6 +1,6 @@
 -- Complete CoreFunctions for Grow A Garden Script Loader
 -- External Module for MAIN
--- UPDATED AGAIN AGAIN
+-- UPDATED AGAIN AGAIN AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -106,7 +106,6 @@ end)
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
 
--- Services
 -- Services
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -273,36 +272,54 @@ local function autoSellLoop()
                 local lowerEquippedName = string.lower(equippedPet.Name)
                 
                 -- Same precise matching logic for equipped pets
-                if lowerEquippedName == lowerPetName or 
-                   string.match(lowerEquippedName, "^" .. lowerPetName .. "%s") or
-                   string.match(lowerEquippedName, "%s" .. lowerPetName .. "$") or
-                   string.match(lowerEquippedName, "%s" .. lowerPetName .. "%s") then
+                if lowerEquippedName == lowerPetName then
                     shouldSellEquipped = true
                     break
+                else
+                    -- Handle hyphenated words by replacing hyphens with spaces for comparison
+                    local normalizedEquipped = string.gsub(lowerEquippedName, "%-", " ")
+                    local normalizedPet = string.gsub(lowerPetName, "%-", " ")
+                    
+                    local pattern = "%f[%w]" .. string.gsub(normalizedPet, "%s+", "%%s+") .. "%f[%W]"
+                    if string.find(normalizedEquipped, pattern) then
+                        shouldSellEquipped = true
+                        break
+                    end
                 end
             end
         end
         
         if shouldSellEquipped then
-            CoreFunctions.sellEquippedPet()
-            lastSellTime = currentTime
+            local success = CoreFunctions.sellEquippedPet()
+            if success then
+                lastSellTime = currentTime
+            end
             return
         end
     end
     
     -- Try to equip and sell pets from backpack
+    local foundPet = false
     for petName, shouldSell in pairs(selectedPetsToSell) do
         if shouldSell and autoSellEnabled then
             if CoreFunctions.findAndEquipPet(petName) then
+                foundPet = true
                 -- Quick equip check
                 task.wait(0.05)
-                CoreFunctions.sellEquippedPet()
-                lastSellTime = currentTime
+                local success = CoreFunctions.sellEquippedPet()
+                if success then
+                    lastSellTime = currentTime
+                end
                 break -- Only process one pet per cycle
             end
         end
         
         if not autoSellEnabled then break end
+    end
+    
+    -- If no pets were found to sell, reset cooldown to check again sooner
+    if not foundPet then
+        lastSellTime = currentTime - sellCooldown + 0.1
     end
 end
 
@@ -362,7 +379,6 @@ game.Players.PlayerRemoving:Connect(function(leavingPlayer)
         CoreFunctions.cleanup()
     end
 end)
-
 -- ==========================================
 -- SHOVEL FUNCTIONS
 -- ==========================================
