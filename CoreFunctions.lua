@@ -253,65 +253,173 @@ end
 function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
+local player = game:GetService("Players").LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE -- RemoteEvent 
 
--- ==========================================
--- AUTO-BUY FUNCTIONS
--- ==========================================
+-- Variables
+local selectedPets = {} -- Table for multiple pets
+local autoSellEnabled = false
+local autoSellLoop = nil -- Track the loop coroutine
+local petDropdown -- Will be created later
+-- Function to extract clean pet name (remove weight and brackets)
+function CoreFunctions.extractPetName(fullName)
+    -- Remove weight information (anything in brackets)
+    local cleanName = string.gsub(fullName, "%s*%[.-%]", "")
+    return cleanName
+end
 
-function CoreFunctions.toggleAutoBuyZen(enabled)
-    autoBuyZenEnabled = enabled
+-- Function to scan backpack for pets
+function CoreFunctions.scanBackpackForPets()
+    local pets = {}
+    local uniquePets = {} -- To avoid duplicates
     
-    if enabled then
-        if zenBuyConnection then zenBuyConnection:Disconnect() end
-        zenBuyConnection = RunService.Heartbeat:Connect(function()
-            if autoBuyZenEnabled then
-                CoreFunctions.buyAllZenItems()
-                task.wait(1) -- Prevent spam
+    if not player.Character then return pets end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return pets end
+    
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+            -- Extract clean pet name
+            local cleanName = CoreFunctions.extractPetName(item.Name)
+            
+            -- Only add if not already in the list
+            if not uniquePets[cleanName] then
+                uniquePets[cleanName] = true
+                table.insert(pets, cleanName)
             end
-        end)
+        end
+    end
+    
+    -- Sort pets alphabetically
+    table.sort(pets)
+    
+    -- Add "All Pets" option at the beginning
+    table.insert(pets, 1, "All Pets")
+    
+    return pets
+end
+
+-- Function to get current pets and update dropdown
+function CoreFunctions.getCurrentPets()
+    return CoreFunctions.scanBackpackForPets()
+end
+
+-- Function to find specific pet in backpack
+function CoreFunctions.findPetInBackpack(petName)
+    if not player.Character then return nil end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return nil end
+    
+    -- Look for pets that match the clean name
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+            local cleanItemName = CoreFunctions.extractPetName(item.Name)
+            if string.lower(cleanItemName) == string.lower(petName) then
+                return item
+            end
+        end
+    end
+    return nil
+end
+
+-- Function to equip pet
+function CoreFunctions.equipPet(pet)
+    if pet and player.Character then
+        pet.Parent = player.Character
+        return true
+    end
+    return false
+end
+
+-- Function to fire sell remote
+function CoreFunctions.sellPet()
+    SellPet_RE:FireServer()
+end
+
+-- Function to sell individual pet
+function CoreFunctions.autoSellPet(petName)
+    if not autoSellEnabled then
+        return false
+    end
+    
+    -- Step 1: Search for pet in backpack
+    local pet = CoreFunctions.findPetInBackpack(petName)
+    
+    if pet then
+        -- Step 2: Equip the pet
+        if CoreFunctions.equipPet(pet) then
+            task.wait(0.2) -- Wait for equip
+            
+            -- Step 3: Fire sell event
+            CoreFunctions.sellPet()
+            task.wait(0.1) -- Wait for sell
+            
+            return true
+        end
+    end
+    return false
+end
+
+-- Function to set selected pets
+function CoreFunctions.setSelectedPets(pets)
+    selectedPets = pets or {}
+end
+
+-- Function to auto-sell all selected pets
+function CoreFunctions.autoSellSelectedPets()
+    if not autoSellEnabled or not next(selectedPets) then
+        return
+    end
+    
+    -- Check if "All Pets" is selected
+    local sellAllPets = selectedPets["All Pets"]
+    
+    if sellAllPets then
+        -- Get current pets from backpack and sell all
+        if not player.Character then return end
+        local backpack = player:FindFirstChild("Backpack")
+        if not backpack then return end
+        
+        -- Loop through all pets in backpack
+        for _, item in pairs(backpack:GetChildren()) do
+            if item:IsA("Tool") and item:FindFirstChild("PetToolServer") then
+                local cleanName = CoreFunctions.extractPetName(item.Name)
+                local success = CoreFunctions.autoSellPet(cleanName)
+                if success then
+                    -- Small delay between selling different pets
+                    task.wait(0.1)
+                end
+            end
+        end
     else
-        if zenBuyConnection then
-            zenBuyConnection:Disconnect()
-            zenBuyConnection = nil
+        -- Sell only selected pets (loop through each selected pet type)
+        for petName, _ in pairs(selectedPets) do
+            if petName ~= "All Pets" then
+                local success = CoreFunctions.autoSellPet(petName)
+                if success then
+                    -- Small delay between selling different pets
+                    task.wait(0.1)
+                end
+            end
         end
     end
 end
 
-function CoreFunctions.toggleAutoBuyMerchant(enabled)
-    autoBuyMerchantEnabled = enabled
-    
-    if enabled then
-        if merchantBuyConnection then merchantBuyConnection:Disconnect() end
-        merchantBuyConnection = RunService.Heartbeat:Connect(function()
-            if autoBuyMerchantEnabled then
-                CoreFunctions.buyAllMerchantItems()
-                task.wait(1) -- Prevent spam
-            end
-        end)
+-- Function to refresh the dropdown with current pets
+function CoreFunctions.refreshPetDropdown()
+    if petDropdown and petDropdown.SetValues then
+        local currentPets = CoreFunctions.getCurrentPets()
+        petDropdown:SetValues(currentPets)
+        print("Refreshed dropdown with pets:", currentPets) -- Debug print
     else
-        if merchantBuyConnection then
-            merchantBuyConnection:Disconnect()
-            merchantBuyConnection = nil
-        end
+        print("Dropdown not ready yet") -- Debug print
     end
 end
 
-function CoreFunctions.buyAllZenItems()
-    if not BuyEventShopStock then return end
-    for _, item in pairs(zenItems) do
-        pcall(function()
-            BuyEventShopStock:FireServer(item)
-        end)
-    end
-end
-
-function CoreFunctions.buyAllMerchantItems()
-    if not BuyTravelingMerchantShopStock then return end
-    for _, item in pairs(merchantItems) do
-        pcall(function()
-            BuyTravelingMerchantShopStock:FireServer(item)
-        end)
-    end
+-- Function to get auto-sell status
+function CoreFunctions.getAutoSellStatus()
+    return autoSellEnabled
 end
 
 -- ==========================================
