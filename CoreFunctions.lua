@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED 1.1
+-- UPDATED 1111
 local CoreFunctions = {}
 
 -- Services
@@ -940,29 +940,20 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
-    -- Check if shovelClient exists
-    if not shovelClient then
-        return
+    -- Get Objects_Physical folder from the detected farm
+    local objectsFolder = currentFarm:FindFirstChild("Important")
+    if objectsFolder then
+        objectsFolder = objectsFolder:FindFirstChild("Objects_Physical")
     end
-
-    local success, destroyEnv = pcall(function()
-        return getsenv and getsenv(shovelClient) or nil
-    end)
     
-    if not success or not destroyEnv then
-        return
-    end
-
-    -- Get the Objects folder from the player's farm specifically
-    local farmObjects = currentFarm:FindFirstChild("Objects")
-    if not farmObjects then
+    if not objectsFolder then
         return
     end
 
     local deletedCount = 0
     local deletedTypes = {}
 
-    for _, obj in ipairs(farmObjects:GetChildren()) do
+    for _, obj in ipairs(objectsFolder:GetChildren()) do
         for _, typeName in ipairs(targetSprinklers) do
             if obj.Name == typeName then
                 -- Track which types we actually deleted
@@ -971,14 +962,8 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
                 end
                 deletedTypes[typeName] = deletedTypes[typeName] + 1
                 
-                -- Destroy the object safely
+                -- Destroy the object safely using RemoveItem
                 pcall(function()
-                    if destroyEnv and destroyEnv.Destroy and typeof(destroyEnv.Destroy) == "function" then
-                        destroyEnv.Destroy(obj)
-                    end
-                    if DeleteObject then
-                        DeleteObject:FireServer(obj)
-                    end
                     if RemoveItem then
                         RemoveItem:FireServer(obj)
                     end
