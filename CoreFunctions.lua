@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED 123
+-- UPDATED 123still
 local CoreFunctions = {}
 
 -- Services
@@ -809,9 +809,9 @@ function CoreFunctions.autoHarvest()
         end
     end
     
-    -- Keep the logic without print output
+    -- Debug output
     if harvestedCount > 0 then
-        -- Silent success tracking
+        print("Harvested", harvestedCount, "fruits")
     end
 end
 
