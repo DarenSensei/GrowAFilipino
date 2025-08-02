@@ -1241,8 +1241,67 @@ VulnTab:Paragraph({
 VulnTab:Divider()
 
 VulnTab:Section({
-    Title = "-- Auto Submit Kitsune --"
+    Title = "-- Auto Zen/Submit Kitsune --"
 })
+
+VulnTab:Button({
+    Title = "Load ZenEvent",
+    Description = "Load ZenEvent to continue your journey",
+    Icon = "folder-open",
+    Callback = function()
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+        local zenEventPath = ReplicatedStorage.Modules.UpdateService:FindFirstChild("ZenEvent")
+        
+        if zenEventPath then
+            zenEventPath.Parent = Workspace
+            WindUI:Notify({
+                Title = "Success",
+                Content = "ZenEvent loaded into Workspace!",
+                Duration = 2,
+                Icon = "check-circle"
+            })
+        end
+    end
+})
+
+VulnTab:Toggle({
+    Title = "Zen Aura Submit",
+    Desc = "Auto-submit all plants for Zen Aura",
+    Icon = "leaf",
+    Default = false,
+    Callback = function(Value)
+        ZenAuraEnabled = Value
+        if Value then
+            task.spawn(function()
+                while ZenAuraEnabled do
+                    game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
+                    task.wait(5)
+                end
+            end)
+        end
+    end
+})
+
+VulnTab:Toggle({
+    Title = "Zen Quest Submit", 
+    Desc = "Auto-submit all plants for Zen Quest",
+    Icon = "target",
+    Default = false,
+    Callback = function(Value)
+        ZenQuestEnabled = Value
+        if Value then
+            task.spawn(function()
+                while ZenQuestEnabled do
+                    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
+                    task.wait(5)
+                end
+            end)
+        end
+    end
+})
+
+VulnTab:Divider()
 
 VulnTab:Toggle({
     Title = "Auto Submit to Fox",
@@ -1330,49 +1389,6 @@ VulnTab:Button({
         end
     end
 })
-
-VulnTab:Divider()
-
-VulnTab:Section({
-        Title = "-- Zen Auto --"
-    })
-
-VulnTab:Toggle({
-    Title = "Zen Aura Submit",
-    Desc = "Auto-submit all plants for Zen Aura every 5 seconds",
-    Icon = "leaf",
-    Default = false,
-    Callback = function(Value)
-        ZenAuraEnabled = Value
-        if Value then
-            task.spawn(function()
-                while ZenAuraEnabled do
-                    game:GetService("ReplicatedStorage").GameEvents.ZenAuraRemoteEvent:FireServer("SubmitAllPlants")
-                    task.wait(5)
-                end
-            end)
-        end
-    end
-})
-
-VulnTab:Toggle({
-    Title = "Zen Quest Submit", 
-    Desc = "Auto-submit all plants for Zen Quest every 5 seconds",
-    Icon = "target",
-    Default = false,
-    Callback = function(Value)
-        ZenQuestEnabled = Value
-        if Value then
-            task.spawn(function()
-                while ZenQuestEnabled do
-                    game:GetService("ReplicatedStorage").GameEvents.ZenQuestRemoteEvent:FireServer("SubmitAllPlants")
-                    task.wait(5)
-                end
-            end)
-        end
-    end
-})
-
 
 -- ===========================================
 -- MISC TAB (Updated for WindUI)
