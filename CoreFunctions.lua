@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED 1
+-- UPDATED 111
 local CoreFunctions = {}
 
 -- Services
@@ -977,10 +977,18 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         end
     end
 
-    -- Unequip shovel after deletion
-    local equippedShovel = player.Character:FindFirstChild(shovelName)
-    if equippedShovel then
-        equippedShovel.Parent = player.Backpack
+    -- Only unequip shovel after deletion if we actually deleted something
+    if deletedCount > 0 then
+        local character = game.Players.LocalPlayer.Character
+        if character then
+            -- Look for any equipped shovel tool
+            for _, tool in ipairs(character:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name:lower():find("shovel") then
+                    tool.Parent = game.Players.LocalPlayer.Backpack
+                    break
+                end
+            end
+        end
     end
 end
 
@@ -1041,7 +1049,6 @@ function CoreFunctions.getSelectedSprinklersString()
     local selectionText = table.concat(selectedSprinklers, ", ")
     return #selectionText > 50 and (selectionText:sub(1, 47) .. "...") or selectionText
 end
-
 -- ==========================================
 -- FARM MANAGEMENT FUNCTIONS
 -- ==========================================
