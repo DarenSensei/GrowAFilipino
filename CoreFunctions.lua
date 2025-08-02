@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN AGAIN AGAIN
+-- UPDATED
 local CoreFunctions = {}
 
 -- Services
@@ -155,18 +155,103 @@ function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
 
--- Function to check if two pet names match exactly (case insensitive)
+-- Function to check if two pet names match (exact or safe partial)
 local function isPetNameMatch(itemName, targetName)
-    return string.lower(itemName) == string.lower(targetName)
+    local lowerItemName = string.lower(itemName)
+    local lowerTargetName = string.lower(targetName)
+    
+    -- First try exact match
+    if lowerItemName == lowerTargetName then
+        return true
+    end
+    
+    -- For partial matching, make sure the target name appears as complete words
+    -- and that the item name doesn't contain words that aren't in the target
+    local function containsCompleteWords(fullName, targetName)
+        -- Normalize both names (replace hyphens with spaces)
+        local normalizedFull = string.gsub(fullName, "%-", " ")
+        local normalizedTarget = string.gsub(targetName, "%-", " ")
+        
+        -- Split into words
+        local fullWords = {}
+        local targetWords = {}
+        
+        for word in string.gmatch(normalizedFull, "%S+") do
+            table.insert(fullWords, word)
+        end
+        
+        for word in string.gmatch(normalizedTarget, "%S+") do
+            table.insert(targetWords, word)
+        end
+        
+        -- Check if all target words are present in full name
+        local allTargetWordsFound = true
+        for _, targetWord in ipairs(targetWords) do
+            local found = false
+            for _, fullWord in ipairs(fullWords) do
+                if fullWord == targetWord then
+                    found = true
+                    break
+                end
+            end
+            if not found then
+                allTargetWordsFound = false
+                break
+            end
+        end
+        
+        -- Only match if all target words are found AND
+        -- the full name doesn't have extra words that could change meaning
+        -- (like "Corrupted" before "Kodama")
+        if allTargetWordsFound then
+            -- Special check: if full name has more words than target,
+            -- make sure none of them are modifiers that change the pet type
+            local modifiers = {"corrupted", "golden", "shiny", "rare", "epic", "legendary"}
+            local hasModifier = false
+            
+            for _, fullWord in ipairs(fullWords) do
+                for _, modifier in ipairs(modifiers) do
+                    if fullWord == modifier then
+                        -- Check if this modifier is also in target words
+                        local modifierInTarget = false
+                        for _, targetWord in ipairs(targetWords) do
+                            if targetWord == modifier then
+                                modifierInTarget = true
+                                break
+                            end
+                        end
+                        if not modifierInTarget then
+                            hasModifier = true
+                            break
+                        end
+                    end
+                end
+                if hasModifier then break end
+            end
+            
+            return not hasModifier
+        end
+        
+        return false
+    end
+    
+    return containsCompleteWords(lowerItemName, lowerTargetName)
 end
 
--- Function to find and equip pet (improved with exact matching)
+-- Function to find and equip pet (improved matching)
 function CoreFunctions.findAndEquipPet(petType)
     if not player.Character then return false end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return false end
     
-    -- Only use exact name matching to prevent issues like Kodama vs Corrupted Kodama
+    -- First try exact name match
+    local pet = backpack:FindFirstChild(petType)
+    if pet and pet:IsA("Tool") then
+        pet.Parent = player.Character
+        return true
+    end
+    
+    -- Then try smart matching
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") and isPetNameMatch(item.Name, petType) then
             item.Parent = player.Character
