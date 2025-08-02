@@ -1,6 +1,279 @@
 -- ESP Module
 local esp = {}
 
+-- ========================================================
+--                        PET ESP
+
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+local petsPhysical = workspace:WaitForChild("PetsPhysical")
+
+local GetPetCooldown = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("GetPetCooldown")
+local activePetUI = player.PlayerGui:WaitForChild("ActivePetUI")
+local scrollingFrame = activePetUI:WaitForChild("Frame"):WaitForChild("Main"):WaitForChild("ScrollingFrame")
+
+-- ESP Variables
+local petModelCache = {}
+local petData = {}
+local espEnabled = false
+local heartbeatConnection
+local childAddedConnection
+local childRemovedConnection
+
+local function updatePetData()
+    petData = {}
+    for _, frame in pairs(scrollingFrame:GetChildren()) do
+        if frame:IsA("Frame") and frame.Name:match("^{.+}$") then
+            local petTypeLabel = frame:FindFirstChild("PET_TYPE")
+            if petTypeLabel and petTypeLabel:IsA("TextLabel") then
+                local petName = petTypeLabel.Text
+                if petName and petName ~= "" then
+                    petData[frame.Name] = petName
+                end
+            end
+        end
+    end
+end
+
+local function secondsToMinSec(seconds)
+    if not seconds or seconds <= 0 then
+        return "Ready"
+    end
+    local minutes = math.floor(seconds / 60)
+    local remainingSeconds = math.floor(seconds % 60)
+    return string.format("%dm %ds", minutes, remainingSeconds)
+end
+
+local function getPetIds()
+    local petIds = {}
+    local pattern = "{.-}"
+    local children = scrollingFrame:GetChildren()
+    for _, child in ipairs(children) do
+        for match in string.gmatch(child.Name, pattern) do
+            table.insert(petIds, match)
+        end
+    end
+    return petIds
+end
+
+local function findPathByPetId(petId)
+    if petModelCache[petId] then
+        return petModelCache[petId]
+    end
+
+    local descendants = petsPhysical:GetDescendants()
+    local matches = {}
+    local pattern = "{.-}"
+
+    for _, descendant in ipairs(descendants) do
+        local name = descendant.Name
+        local fullPath = descendant:GetFullName()
+        for match in string.gmatch(name, pattern) do
+            if match == petId then
+                table.insert(matches, {path = fullPath, match = match, instance = descendant})
+            end
+        end
+    end
+
+    if #matches > 0 then
+        petModelCache[petId] = matches
+    end
+    return matches
+end
+
+local function createOrUpdateESP(petModel, petId, cooldownTime)
+    if not petModel or not petModel:IsA("Model") then
+        return
+    end
+
+    local primaryPart = petModel.PrimaryPart or petModel:FindFirstChildWhichIsA("BasePart")
+    if not primaryPart then
+        return
+    end
+
+    local billboard = primaryPart:FindFirstChild("CooldownESP")
+    if not billboard then
+        billboard = Instance.new("BillboardGui")
+        billboard.Name = "CooldownESP"
+        billboard.Adornee = primaryPart
+        billboard.Size = UDim2.new(0, 150, 0, 60)
+        billboard.StudsOffset = Vector3.new(0, 3, 0)
+        billboard.AlwaysOnTop = true
+        billboard.LightInfluence = 0
+        billboard.Parent = primaryPart
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundTransparency = 1
+        frame.BorderSizePixel = 0
+        frame.Parent = billboard
+
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.Position = UDim2.new(0, 0, 0, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextSize = 16
+        nameLabel.TextScaled = true
+        nameLabel.Parent = frame
+
+        local cooldownLabel = Instance.new("TextLabel")
+        cooldownLabel.Name = "CooldownLabel"
+        cooldownLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        cooldownLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        cooldownLabel.BackgroundTransparency = 1
+        cooldownLabel.TextColor3 = Color3.fromRGB(200, 255, 200)
+        cooldownLabel.TextStrokeTransparency = 0.5
+        cooldownLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        cooldownLabel.Font = Enum.Font.GothamBold
+        cooldownLabel.TextSize = 16
+        cooldownLabel.TextScaled = true
+        cooldownLabel.Parent = frame
+    end
+
+    local frame = billboard:FindFirstChildWhichIsA("Frame")
+    local nameLabel = frame and frame:FindFirstChild("NameLabel")
+    local cooldownLabel = frame and frame:FindFirstChild("CooldownLabel")
+    if nameLabel and cooldownLabel then
+        local petName = petData[petId] or "Unknown"
+        local displayText = "Cooldown: " .. secondsToMinSec(cooldownTime)
+        if nameLabel.Text ~= petName then
+            nameLabel.Text = petName
+        end
+        if cooldownLabel.Text ~= displayText then
+            cooldownLabel.Text = displayText
+        end
+    end
+end
+
+local function cleanupESP(petIds)
+    for cachedPetId, matches in pairs(petModelCache) do
+        if not table.find(petIds, cachedPetId) then
+            for _, match in ipairs(matches) do
+                local petModel = match.instance
+                if petModel then
+                    local primaryPart = petModel.PrimaryPart or petModel:FindFirstChildWhichIsA("BasePart")
+                    if primaryPart then
+                        local billboard = primaryPart:FindFirstChild("CooldownESP")
+                        if billboard then
+                            billboard:Destroy()
+                        end
+                    end
+                end
+            end
+            petModelCache[cachedPetId] = nil
+        end
+    end
+end
+
+local function removeAllESP()
+    for cachedPetId, matches in pairs(petModelCache) do
+        for _, match in ipairs(matches) do
+            local petModel = match.instance
+            if petModel then
+                local primaryPart = petModel.PrimaryPart or petModel:FindFirstChildWhichIsA("BasePart")
+                if primaryPart then
+                    local billboard = primaryPart:FindFirstChild("CooldownESP")
+                    if billboard then
+                        billboard:Destroy()
+                    end
+                end
+            end
+        end
+    end
+    petModelCache = {}
+end
+
+local function updateCooldowns()
+    if not espEnabled then return end
+    
+    updatePetData()
+    local petIds = getPetIds()
+    if #petIds == 0 then
+        cleanupESP(petIds)
+        return
+    end
+
+    cleanupESP(petIds)
+
+    for _, petId in ipairs(petIds) do
+        local matches = findPathByPetId(petId)
+        if #matches == 0 then
+            continue
+        end
+
+        for _, match in ipairs(matches) do
+            local petModel = match.instance
+            local success, result = pcall(function()
+                return GetPetCooldown:InvokeServer(petId)
+            end)
+
+            if success and result and result[1] and result[1].Time then
+                local cooldownTime = result[1].Time
+                createOrUpdateESP(petModel, petId, cooldownTime)
+            else
+                createOrUpdateESP(petModel, petId, nil)
+            end
+        end
+    end
+end
+
+-- MAIN ESP FUNCTION - This is what you call from outside
+function Petesp(enabled)
+    espEnabled = enabled
+    
+    if enabled then
+        -- Start ESP
+        updateCooldowns()
+        
+        local lastUpdate = 0
+        heartbeatConnection = RunService.Heartbeat:Connect(function()
+            local currentTime = tick()
+            if currentTime - lastUpdate >= 2 then
+                updateCooldowns()
+                lastUpdate = currentTime
+            end
+        end)
+
+        childAddedConnection = scrollingFrame.ChildAdded:Connect(function()
+            updateCooldowns()
+        end)
+        
+        childRemovedConnection = scrollingFrame.ChildRemoved:Connect(function()
+            updateCooldowns()
+        end)
+    else
+        -- Stop ESP
+        if heartbeatConnection then
+            heartbeatConnection:Disconnect()
+            heartbeatConnection = nil
+        end
+        
+        if childAddedConnection then
+            childAddedConnection:Disconnect()
+            childAddedConnection = nil
+        end
+        
+        if childRemovedConnection then
+            childRemovedConnection:Disconnect()
+            childRemovedConnection = nil
+        end
+        
+        removeAllESP()
+    end
+end
+
+--=========================================================
+--                        FRUIT ESP
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
