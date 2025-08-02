@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED
+-- UPDATED AGAIN AGAIN AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -104,72 +104,113 @@ end)
 -- ==========================================
 -- AUTO-SELL PET FUNCTIONS
 -- ==========================================
--- Function to find and equip pet (fixed)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Player
+local player = Players.LocalPlayer
+
+-- Remote
+local SellPet_RE = ReplicatedStorage.GameEvents.SellPet_RE -- RemoteEvent 
+
+-- Pet list
+local petlist = {
+    "Bear Bee", "Blood Owl", "Brown Mouse", "Bunny", "Butterfly", "Capybara",
+    "Caterpillar", "Corrupted Kodama", "Corrupted Kitsune", "Crab", "Disco Bee",
+    "Dog", "Dragonfly", "Flamingo", "Golden Lab", "Grey Mouse", "Hedgehog",
+    "Honey Bee", "Kitsune", "Kodama", "Koi", "Maneki-neko", "Mimic Octopus",
+    "Moth", "Nihonzaru", "Ostrich", "Pack Bee", "Peacock", "Petal Bee",
+    "Polar Bear", "Praying Mantis", "Queen Bee", "Raiju", "Raptor", "Red Fox",
+    "Red Giant Ant", "Scarlet Macaw", "Sea Turtle", "Seagull", "Seal",
+    "Shiba Inu", "Silver Monkey", "Snail", "Squirrel", "Tanchozuru", "Tanuki",
+    "Tarantula Hawk", "Toucan", "Wasp"
+}
+
+-- Auto sell variables
+local autoSellEnabled = false
+local selectedPetsToSell = {}
+local autoSellConnection = nil
+local lastSellTime = 0
+local sellCooldown = 0.3 -- seconds between sells
+
+-- Function to get pet list
+function CoreFunctions.getPetList()
+    return petlist
+end
+
+-- Function to get selected pets
+function CoreFunctions.getSelectedPets()
+    return selectedPetsToSell
+end
+
+-- Function to set selected pets
+function CoreFunctions.setSelectedPets(pets)
+    selectedPetsToSell = pets or {}
+    return true, "Selected pets updated"
+end
+
+-- Function to get auto sell status
+function CoreFunctions.getAutoSellStatus()
+    return autoSellEnabled
+end
+
+-- Function to check if two pet names match exactly (case insensitive)
+local function isPetNameMatch(itemName, targetName)
+    return string.lower(itemName) == string.lower(targetName)
+end
+
+-- Function to find and equip pet (improved with exact matching)
 function CoreFunctions.findAndEquipPet(petType)
     if not player.Character then return false end
     local backpack = player:FindFirstChild("Backpack")
     if not backpack then return false end
     
-    -- First try exact name match
-    local pet = backpack:FindFirstChild(petType)
-    if pet and pet:IsA("Tool") then
-        pet.Parent = player.Character
-        return true
-    end
-    
-    -- Try case insensitive exact match
-    local lowerPetType = string.lower(petType)
+    -- Only use exact name matching to prevent issues like Kodama vs Corrupted Kodama
     for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            local lowerItemName = string.lower(item.Name)
-            if lowerItemName == lowerPetType then
-                item.Parent = player.Character
-                return true
-            end
-        end
-    end
-    
-    -- For partial matching, only match if the target name appears as the FULL name or at word boundaries
-    -- but prioritize exact matches from the petlist
-    for _, item in pairs(backpack:GetChildren()) do
-        if item:IsA("Tool") then
-            local lowerItemName = string.lower(item.Name)
-            
-            -- Check if this item name exactly matches any name in our petlist
-            local isExactPetListMatch = false
-            for _, listPet in pairs(petlist) do
-                if string.lower(listPet) == lowerItemName then
-                    isExactPetListMatch = true
-                    break
-                end
-            end
-            
-            -- Only do partial matching if:
-            -- 1. The target pet name is not in the petlist (custom pet), OR
-            -- 2. The item name is not an exact match to any petlist item
-            if not isExactPetListMatch then
-                local function matchesAsWord(fullName, targetName)
-                    -- Handle hyphenated words by replacing hyphens with spaces for comparison
-                    local normalizedFull = string.gsub(fullName, "%-", " ")
-                    local normalizedTarget = string.gsub(targetName, "%-", " ")
-                    
-                    -- Check if target appears as complete word(s) in the full name
-                    local pattern = "%f[%w]" .. string.gsub(normalizedTarget, "%s+", "%%s+") .. "%f[%W]"
-                    return string.find(normalizedFull, pattern) ~= nil
-                end
-                
-                if matchesAsWord(lowerItemName, lowerPetType) then
-                    item.Parent = player.Character
-                    return true
-                end
-            end
+        if item:IsA("Tool") and isPetNameMatch(item.Name, petType) then
+            item.Parent = player.Character
+            return true
         end
     end
     
     return false
 end
 
--- Updated auto sell loop function with fixed matching
+-- Function to check if pet is equipped
+function CoreFunctions.isPetEquipped()
+    if not player.Character then return false end
+    
+    for _, item in pairs(player.Character:GetChildren()) do
+        if item:IsA("Tool") then
+            return true, item
+        end
+    end
+    return false
+end
+
+-- Function to sell equipped pet
+function CoreFunctions.sellEquippedPet()
+    if not autoSellEnabled then return false, "Auto sell is disabled" end
+    
+    -- Check if a pet is actually equipped
+    local equipped, pet = CoreFunctions.isPetEquipped()
+    if not equipped then
+        return false, "No pet equipped"
+    end
+    
+    local success, error = pcall(function()
+        SellPet_RE:FireServer()
+    end)
+    
+    if success then
+        return true, "Pet sold successfully"
+    else
+        return false, "Error selling pet: " .. tostring(error)
+    end
+end
+
+-- Main auto sell loop function (improved with exact matching)
 local function autoSellLoop()
     if not autoSellEnabled then return end
     
@@ -194,37 +235,9 @@ local function autoSellLoop()
     if equipped then
         local shouldSellEquipped = false
         for petName, shouldSell in pairs(selectedPetsToSell) do
-            if shouldSell then
-                local lowerPetName = string.lower(petName)
-                local lowerEquippedName = string.lower(equippedPet.Name)
-                
-                -- First check for exact match
-                if lowerEquippedName == lowerPetName then
-                    shouldSellEquipped = true
-                    break
-                else
-                    -- Check if equipped pet is in petlist (to avoid partial matching on known pets)
-                    local equippedIsInPetList = false
-                    for _, listPet in pairs(petlist) do
-                        if string.lower(listPet) == lowerEquippedName then
-                            equippedIsInPetList = true
-                            break
-                        end
-                    end
-                    
-                    -- Only do partial matching if equipped pet is not in the official petlist
-                    if not equippedIsInPetList then
-                        -- Handle hyphenated words by replacing hyphens with spaces for comparison
-                        local normalizedEquipped = string.gsub(lowerEquippedName, "%-", " ")
-                        local normalizedPet = string.gsub(lowerPetName, "%-", " ")
-                        
-                        local pattern = "%f[%w]" .. string.gsub(normalizedPet, "%s+", "%%s+") .. "%f[%W]"
-                        if string.find(normalizedEquipped, pattern) then
-                            shouldSellEquipped = true
-                            break
-                        end
-                    end
-                end
+            if shouldSell and isPetNameMatch(equippedPet.Name, petName) then
+                shouldSellEquipped = true
+                break
             end
         end
         
@@ -261,6 +274,63 @@ local function autoSellLoop()
         lastSellTime = currentTime - sellCooldown + 0.1
     end
 end
+
+-- Function to start auto sell
+function CoreFunctions.startAutoSell()
+    if autoSellConnection then
+        autoSellConnection:Disconnect()
+    end
+    
+    autoSellConnection = RunService.Heartbeat:Connect(autoSellLoop)
+    return true, "Auto sell started"
+end
+
+-- Function to stop auto sell
+function CoreFunctions.stopAutoSell()
+    if autoSellConnection then
+        autoSellConnection:Disconnect()
+        autoSellConnection = nil
+    end
+    
+    return true, "Auto sell stopped"
+end
+
+-- Function to toggle auto sell
+function CoreFunctions.toggleAutoSell(enabled)
+    autoSellEnabled = enabled
+    
+    if enabled then
+        -- Check if pets are selected
+        local hasPetsSelected = false
+        for _ in pairs(selectedPetsToSell) do
+            hasPetsSelected = true
+            break
+        end
+        
+        if not hasPetsSelected then
+            autoSellEnabled = false
+            return false, "Please select pets to sell first!"
+        end
+        
+        return CoreFunctions.startAutoSell()
+    else
+        return CoreFunctions.stopAutoSell()
+    end
+end
+
+-- Cleanup function
+function CoreFunctions.cleanup()
+    CoreFunctions.stopAutoSell()
+    selectedPetsToSell = {}
+    autoSellEnabled = false
+end
+
+-- Auto cleanup when player leaves
+game.Players.PlayerRemoving:Connect(function(leavingPlayer)
+    if leavingPlayer == player then
+        CoreFunctions.cleanup()
+    end
+end)
 
 -- ==========================================
 -- SHOVEL FUNCTIONS
