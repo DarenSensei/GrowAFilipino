@@ -243,8 +243,8 @@ local MainTab = Window:Tab({
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.3.3)",
-    Desc = "Added : Auto Sell Pet (All pet include Favorited Pets)",
+    Title = "📜Changelogs : (v.1.3.4)",
+    Desc = "Added : Pet ESP",
     color = "#c7c0b7",
 })
 
@@ -1700,7 +1700,7 @@ MiscTab:Section({
 
 MiscTab:Divider()
 
-MainTab:Toggle({
+MiscTab:Toggle({
     Title = "Pet Cooldown ESP",
     Callback = function(Value)
         Petesp(Value) -- Call the external ESP function
