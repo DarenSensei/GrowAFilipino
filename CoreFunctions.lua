@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED 111
+-- UPDATED 1
 local CoreFunctions = {}
 
 -- Services
@@ -677,24 +677,23 @@ function CoreFunctions.getCurrentFarm()
     return nil
 end
 
+-- Store original distances to restore later
+local originalDistances = {}
+
 function CoreFunctions.harvestPlant(Fruit)
     local Prompt = Fruit:FindFirstChild("ProximityPrompt", true)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end
     
-    -- Store original distance and set to very large number
-    local originalMaxDistance = Prompt.MaxActivationDistance
-    Prompt.MaxActivationDistance = 999999
+    -- Store original distance only once and set to unlimited
+    if not originalDistances[Prompt] then
+        originalDistances[Prompt] = Prompt.MaxActivationDistance
+        Prompt.MaxActivationDistance = 999999
+    end
     
     local success = pcall(function()
         fireproximityprompt(Prompt)
     end)
-    
-    -- Wait a moment before restoring to ensure prompt fires
-    task.wait(0.1)
-    
-    -- Restore original distance
-    Prompt.MaxActivationDistance = originalMaxDistance
     
     return success
 end
@@ -809,11 +808,6 @@ function CoreFunctions.autoHarvest()
             harvestedCount = harvestedCount + 1
         end
     end
-    
-    -- Debug output
-    if harvestedCount > 0 then
-        print("Harvested", harvestedCount, "plants")
-    end
 end
 
 function CoreFunctions.getCropTypes()
@@ -891,6 +885,14 @@ function CoreFunctions.toggleAutoHarvest(enabled)
         end
         autoHarvestEnabled = false
         
+        -- Restore all original distances when stopping auto harvest
+        for prompt, originalDistance in pairs(originalDistances) do
+            if prompt and prompt.Parent then
+                prompt.MaxActivationDistance = originalDistance
+            end
+        end
+        originalDistances = {} -- Clear the table
+        
         return true, "Auto Harvest Stopped"
     end
 end
@@ -903,26 +905,6 @@ end
 -- ==========================================
 -- SPRINKLER FUNCTIONS
 -- ==========================================
-
--- Farm Detection Function
-function CoreFunctions.getCurrentFarm()
-    local farm = workspace:FindFirstChild("Farm")
-    if not farm then return nil end
-    
-    for _, Farm in next, farm:GetChildren() do
-        local Important = Farm:FindFirstChild("Important")
-        if Important then
-            local Data = Important:FindFirstChild("Data")
-            if Data then
-                local Owner = Data:FindFirstChild("Owner")
-                if Owner and Owner.Value == LocalPlayer.Name then
-                    return Farm
-                end
-            end
-        end
-    end
-    return nil
-end
 
 function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     local targetSprinklers = sprinklerArray or selectedSprinklers
@@ -976,19 +958,11 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
             end
         end
     end
+end
 
-    -- Only unequip shovel after deletion if we actually deleted something
-    if deletedCount > 0 then
-        local character = game.Players.LocalPlayer.Character
-        if character then
-            -- Look for any equipped shovel tool
-            for _, tool in ipairs(character:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name:lower():find("shovel") then
-                    tool.Parent = game.Players.LocalPlayer.Backpack
-                    break
-                end
-            end
-        end
+    local equippedShovel = player.Character:FindFirstChild(shovelName)
+    if equippedShovel then
+        equippedShovel.Parent = player.Backpack
     end
 end
 
