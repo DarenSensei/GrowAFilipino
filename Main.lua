@@ -1700,7 +1700,12 @@ MiscTab:Section({
 
 MiscTab:Divider()
 
-
+MainTab:Toggle({
+    Title = "Pet Cooldown ESP",
+    Callback = function(Value)
+        Petesp(Value) -- Call the external ESP function
+    end
+})
 
 -- ===========================================
 -- SOCIAL TAB (Updated for WindUI)
