@@ -705,8 +705,6 @@ Farm:Section({
     Title = "-- Auto Sell Pet --"
 })
 
--- UI Creation
--- Pet Selection Dropdown
 local petDropdown = Farm:Dropdown({
     Title = "Select Pets to Auto Sell",
     Values = safeCall(CoreFunctions.getPetList, "getPetList") or {},
@@ -745,6 +743,7 @@ Farm:Toggle({
         end
     end
 })
+
 -- Glitch TAB
 local Tab = Window:Tab({
     Title = "Glitch",
