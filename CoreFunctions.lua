@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN
+-- UPDATED 1.1.1
 local CoreFunctions = {}
 
 -- Services
@@ -904,17 +904,29 @@ end
 -- SPRINKLER FUNCTIONS
 -- ==========================================
 
+function CoreFunctions.getCurrentFarm()
+    local farm = workspace:FindFirstChild("Farm")
+    if not farm then return nil end
+    
+    for _, Farm in next, farm:GetChildren() do
+        local Important = Farm:FindFirstChild("Important")
+        if Important then
+            local Data = Important:FindFirstChild("Data")
+            if Data then
+                local Owner = Data:FindFirstChild("Owner")
+                if Owner and Owner.Value == LocalPlayer.Name then
+                    return Farm
+                end
+            end
+        end
+    end
+    return nil
+end
+
 function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     local targetSprinklers = sprinklerArray or selectedSprinklers
     
     if #targetSprinklers == 0 then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "No Selection",
-                Content = "No sprinkler types selected.",
-                Time = 3
-            })
-        end
         return
     end
 
@@ -922,15 +934,14 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     CoreFunctions.autoEquipShovel()
     task.wait(0.5)
 
+    -- Get current farm using the new system
+    local currentFarm = CoreFunctions.getCurrentFarm()
+    if not currentFarm then
+        return
+    end
+
     -- Check if shovelClient and objectsFolder exist
     if not shovelClient or not objectsFolder then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Required objects not found.",
-                Time = 3
-            })
-        end
         return
     end
 
@@ -939,13 +950,6 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     end)
     
     if not success or not destroyEnv then
-        if OrionLib then
-            OrionLib:MakeNotification({
-                Name = "Error",
-                Content = "Could not access shovel environment.",
-                Time = 3
-            })
-        end
         return
     end
 
@@ -978,12 +982,10 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         end
     end
 
-    if OrionLib then
-        OrionLib:MakeNotification({
-            Name = "Sprinklers Deleted",
-            Content = string.format("Deleted %d sprinklers", deletedCount),
-            Time = 3
-        })
+    -- Return shovel to backpack
+    local equippedShovel = player.Character:FindFirstChild(shovelName)
+    if equippedShovel then
+        equippedShovel.Parent = player.Backpack
     end
 end
 
