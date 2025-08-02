@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED AGAIN
+-- UPDATED
 local CoreFunctions = {}
 
 -- Services
@@ -630,8 +630,8 @@ function CoreFunctions.getCurrentFarm()
     return nil
 end
 
-function CoreFunctions.harvestPlant(Plant)
-    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
+function CoreFunctions.harvestPlant(Fruit)
+    local Prompt = Fruit:FindFirstChild("ProximityPrompt", true)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end
     
@@ -643,24 +643,19 @@ function CoreFunctions.harvestPlant(Plant)
         fireproximityprompt(Prompt)
     end)
     
-    -- Restore original distance immediately
+    -- Wait a moment before restoring to ensure prompt fires
+    task.wait(0.1)
+    
+    -- Restore original distance
     Prompt.MaxActivationDistance = originalMaxDistance
     
     return success
 end
 
-function CoreFunctions.canHarvest(Plant)
-    local Prompt = Plant:FindFirstChild("ProximityPrompt", true)
+function CoreFunctions.canHarvest(Fruit)
+    local Prompt = Fruit:FindFirstChild("ProximityPrompt", true)
     if not Prompt then return false end
     if not Prompt.Enabled then return false end
-    
-    -- Additional check: see if the plant has fruits ready to harvest
-    local Fruits = Plant:FindFirstChild("Fruits")
-    if Fruits then
-        local fruitsChildren = Fruits:GetChildren()
-        if #fruitsChildren == 0 then return false end
-    end
-    
     return true
 end
 
@@ -857,6 +852,7 @@ end
 function CoreFunctions.getCropsToHarvest(IgnoreDistance)
     return CoreFunctions.getHarvestablePlants(IgnoreDistance)
 end
+
 -- ==========================================
 -- SPRINKLER FUNCTIONS
 -- ==========================================
