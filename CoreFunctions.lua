@@ -904,6 +904,7 @@ end
 -- SPRINKLER FUNCTIONS
 -- ==========================================
 
+-- Farm Detection Function
 function CoreFunctions.getCurrentFarm()
     local farm = workspace:FindFirstChild("Farm")
     if not farm then return nil end
@@ -934,24 +935,18 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
     CoreFunctions.autoEquipShovel()
     task.wait(0.5)
 
-    -- Get current farm using the new system
-    local currentFarm = CoreFunctions.getCurrentFarm()
-    if not currentFarm then
+    -- Check if shovelClient and objectsFolder exist
+    if not shovelClient or not objectsFolder then
         return
     end
 
-    -- Get Objects_Physical folder from the detected farm
-    local objectsFolder = currentFarm:FindFirstChild("Important")
-    if objectsFolder then
-        objectsFolder = objectsFolder:FindFirstChild("Objects_Physical")
-    end
+    local success, destroyEnv = pcall(function()
+        return getsenv and getsenv(shovelClient) or nil
+    end)
     
-    if not objectsFolder then
+    if not success or not destroyEnv then
         return
     end
-
-    -- Get DeleteObject event
-    local DeleteObject = game:GetService("ReplicatedStorage").GameEvents.DeleteObject
 
     local deletedCount = 0
     local deletedTypes = {}
@@ -965,8 +960,11 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
                 end
                 deletedTypes[typeName] = deletedTypes[typeName] + 1
                 
-                -- Destroy the object safely using DeleteObject
+                -- Destroy the object safely
                 pcall(function()
+                    if destroyEnv and destroyEnv.Destroy and typeof(destroyEnv.Destroy) == "function" then
+                        destroyEnv.Destroy(obj)
+                    end
                     if DeleteObject then
                         DeleteObject:FireServer(obj)
                     end
@@ -979,7 +977,7 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         end
     end
 
-    -- Return shovel to backpack
+    -- Unequip shovel after deletion
     local equippedShovel = player.Character:FindFirstChild(shovelName)
     if equippedShovel then
         equippedShovel.Parent = player.Backpack
@@ -1043,6 +1041,7 @@ function CoreFunctions.getSelectedSprinklersString()
     local selectionText = table.concat(selectedSprinklers, ", ")
     return #selectionText > 50 and (selectionText:sub(1, 47) .. "...") or selectionText
 end
+
 -- ==========================================
 -- FARM MANAGEMENT FUNCTIONS
 -- ==========================================
