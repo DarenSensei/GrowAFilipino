@@ -637,7 +637,7 @@ function CoreFunctions.harvestPlant(Plant)
     
     -- Method 1: Try setting MaxActivationDistance to a very large number
     local originalMaxDistance = Prompt.MaxActivationDistance
-    Prompt.MaxActivationDistance = 999
+    Prompt.MaxActivationDistance = 9999
     
     local success = pcall(function()
         fireproximityprompt(Prompt)
@@ -794,7 +794,7 @@ function CoreFunctions.autoHarvest()
     if #Plants == 0 then return end
     
     local harvestedCount = 0
-    local maxPlantsPerCycle = 1000
+    local maxPlantsPerCycle = 50
     
     for i, Plant in next, Plants do
         if i > maxPlantsPerCycle then break end
@@ -804,6 +804,12 @@ function CoreFunctions.autoHarvest()
         end
         task.wait(0.1) -- Small delay between harvests
     end
+    
+    -- Debug output
+    if harvestedCount > 0 then
+        print("Harvested", harvestedCount, "plants")
+    end
+end
 
 function CoreFunctions.getCropTypes()
     local farm = workspace:FindFirstChild("Farm")
@@ -868,7 +874,7 @@ function CoreFunctions.toggleAutoHarvest(enabled)
         autoHarvestConnection = task.spawn(function()
             while autoHarvestEnabled do
                 CoreFunctions.autoHarvest()
-                task.wait(2)
+                task.wait(0.5)
             end
         end)
         
