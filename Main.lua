@@ -1240,6 +1240,30 @@ VulnTab:Paragraph({
 VulnTab:Divider()
 
 VulnTab:Section({
+    Title = "-- Auto Cooking Pot --"
+})
+
+VulnTab:Toggle({
+    Title = "Auto Cooking Pot", 
+    Desc = "Automatically get food from cooking pot but timer continues",
+    Icon = "chef-hat",
+    Default = false,
+    Callback = function(Value)
+        CookingPotEnabled = Value
+        if Value then
+            task.spawn(function()
+                while CookingPotEnabled do
+                    game:GetService("ReplicatedStorage").GameEvents.CookingPotService_RE:FireServer("GetFoodFromPot")
+                    task.wait(1) -- Adjust the wait time as needed
+                end
+            end)
+        end
+    end
+})
+
+VulnTab:Divider()
+
+VulnTab:Section({
     Title = "-- Auto Zen/Submit Kitsune --"
 })
 
