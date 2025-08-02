@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED 1.1.1
+-- UPDATED 1.1.2
 local CoreFunctions = {}
 
 -- Services
@@ -940,8 +940,8 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
-    -- Check if shovelClient and objectsFolder exist
-    if not shovelClient or not objectsFolder then
+    -- Check if shovelClient exists
+    if not shovelClient then
         return
     end
 
@@ -953,10 +953,16 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
+    -- Get the Objects folder from the player's farm specifically
+    local farmObjects = currentFarm:FindFirstChild("Objects")
+    if not farmObjects then
+        return
+    end
+
     local deletedCount = 0
     local deletedTypes = {}
 
-    for _, obj in ipairs(objectsFolder:GetChildren()) do
+    for _, obj in ipairs(farmObjects:GetChildren()) do
         for _, typeName in ipairs(targetSprinklers) do
             if obj.Name == typeName then
                 -- Track which types we actually deleted
@@ -1045,6 +1051,123 @@ function CoreFunctions.getSelectedSprinklersString()
     end
     local selectionText = table.concat(selectedSprinklers, ", ")
     return #selectionText > 50 and (selectionText:sub(1, 47) .. "...") or selectionText
+end
+
+function CoreFunctions.getSprinklersToRemove()
+    local farm = CoreFunctions.getCurrentFarm()
+    if not farm or not farm:FindFirstChild("Objects") then
+        return {}
+    end
+    
+    local sprinklersToRemove = {}
+    local selectedCount = 0
+    for _ in pairs(selectedSprinklers) do selectedCount = selectedCount + 1 end
+    
+    for _, sprinkler in pairs(farm.Objects:GetChildren()) do
+        if not sprinkler or not sprinkler.Name then continue end
+        
+        -- Check if this sprinkler type should be processed
+        local shouldProcess = false
+        if selectedCount == 0 then
+            -- If no sprinklers selected, process all sprinkler types
+            for _, sprinklerType in pairs(sprinklerTypes) do
+                if sprinkler.Name == sprinklerType then
+                    shouldProcess = true
+                    break
+                end
+            end
+        else
+            -- Only process selected sprinkler types
+            for _, selectedType in pairs(selectedSprinklers) do
+                if sprinkler.Name == selectedType then
+                    shouldProcess = true
+                    break
+                end
+            end
+        end
+        
+        if shouldProcess then
+            table.insert(sprinklersToRemove, {
+                sprinkler = sprinkler,
+                sprinklerType = sprinkler.Name
+            })
+        end
+    end
+    
+    return sprinklersToRemove
+end
+
+function CoreFunctions.removeSprinkler(sprinklerData)
+    if not sprinklerData.sprinkler or not sprinklerData.sprinkler.Parent then return 0 end
+    
+    local shovel = player.Character:FindFirstChild(shovelName)
+    if not shovel then return 0 end
+    
+    local success = 0
+    
+    pcall(function()
+        if sprinklerData.sprinkler and sprinklerData.sprinkler.Parent then
+            -- Try multiple removal methods like in the original deleteSprinklers function
+            local destroySuccess, destroyEnv = pcall(function()
+                return getsenv and getsenv(shovelClient) or nil
+            end)
+            
+            if destroySuccess and destroyEnv and destroyEnv.Destroy and typeof(destroyEnv.Destroy) == "function" then
+                destroyEnv.Destroy(sprinklerData.sprinkler)
+            end
+            
+            if DeleteObject then
+                DeleteObject:FireServer(sprinklerData.sprinkler)
+            end
+            
+            if RemoveItem then
+                RemoveItem:FireServer(sprinklerData.sprinkler)
+            end
+            
+            success = 1
+            task.wait(0.05)
+        end
+    end)
+    
+    return success
+end
+
+function CoreFunctions.autoShovelSprinkler()
+    local sprinklersToRemove = CoreFunctions.getSprinklersToRemove()
+    if #sprinklersToRemove == 0 then return end
+    
+    local deletedCount = 0
+    local maxSprinklersPerCycle = 5
+    local processed = 0
+    
+    if not CoreFunctions.autoEquipShovel() then return end
+    
+    for _, sprinklerData in pairs(sprinklersToRemove) do
+        if processed >= maxSprinklersPerCycle then break end
+        
+        local sprinklerRemoved = CoreFunctions.removeSprinkler(sprinklerData)
+        if sprinklerRemoved > 0 then
+            deletedCount = deletedCount + 1
+            processed = processed + 1
+        end
+        
+        task.wait(0.1)
+    end
+    
+    -- Return shovel to backpack
+    local equippedShovel = player.Character:FindFirstChild(shovelName)
+    if equippedShovel then
+        equippedShovel.Parent = player.Backpack
+    end
+end
+
+function CoreFunctions.runAutoShovelSprinkler()
+    if not shovelClient then
+        return false, "Shovel client not found!"
+    end
+    
+    CoreFunctions.autoShovelSprinkler()
+    return true, "Auto Shovel Sprinkler completed"
 end
 -- ==========================================
 -- FARM MANAGEMENT FUNCTIONS
