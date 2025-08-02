@@ -95,7 +95,9 @@ AutoBuy.gearOptions = {
     "Friendship Pot",
     "Medium Toy",
     "Medium Treat",
-    "Levelup Lollipop"
+    "Levelup Lollipop",
+    "Grandmaster Sprinkler",
+    "Trading Ticket"
 }
 
 AutoBuy.seedOptions = {
