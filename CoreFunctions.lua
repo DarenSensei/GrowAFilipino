@@ -950,6 +950,9 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
         return
     end
 
+    -- Get DeleteObject event
+    local DeleteObject = game:GetService("ReplicatedStorage").GameEvents.DeleteObject
+
     local deletedCount = 0
     local deletedTypes = {}
 
@@ -962,8 +965,11 @@ function CoreFunctions.deleteSprinklers(sprinklerArray, OrionLib)
                 end
                 deletedTypes[typeName] = deletedTypes[typeName] + 1
                 
-                -- Destroy the object safely using RemoveItem
+                -- Destroy the object safely using DeleteObject
                 pcall(function()
+                    if DeleteObject then
+                        DeleteObject:FireServer(obj)
+                    end
                     if RemoveItem then
                         RemoveItem:FireServer(obj)
                     end
