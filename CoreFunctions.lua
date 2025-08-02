@@ -1,5 +1,5 @@
 -- External Module for MAIN
--- UPDATED
+-- UPDATED AGAIN
 local CoreFunctions = {}
 
 -- Services
@@ -155,6 +155,18 @@ function CoreFunctions.getAutoSellStatus()
     return autoSellEnabled
 end
 
+-- Function to check if pet has "d" attribute checked
+local function isPetProtected(pet)
+    if not pet or not pet:IsA("Tool") then return false end
+    
+    -- Check if the pet has the "d" attribute and if it's checked (true)
+    local hasAttribute = pet:GetAttribute("d")
+    if hasAttribute == true then
+        return true -- Pet is protected (has "d" checked)
+    end
+    return false -- Pet is not protected
+end
+
 -- Function to check if two pet names match (exact or safe partial)
 local function isPetNameMatch(itemName, targetName)
     local lowerItemName = string.lower(itemName)
@@ -238,7 +250,7 @@ local function isPetNameMatch(itemName, targetName)
     return containsCompleteWords(lowerItemName, lowerTargetName)
 end
 
--- Function to find and equip pet (improved matching)
+-- Function to find and equip pet (improved matching with protection check)
 function CoreFunctions.findAndEquipPet(petType)
     if not player.Character then return false end
     local backpack = player:FindFirstChild("Backpack")
@@ -247,15 +259,21 @@ function CoreFunctions.findAndEquipPet(petType)
     -- First try exact name match
     local pet = backpack:FindFirstChild(petType)
     if pet and pet:IsA("Tool") then
-        pet.Parent = player.Character
-        return true
+        -- Check if pet is protected before equipping
+        if not isPetProtected(pet) then
+            pet.Parent = player.Character
+            return true
+        end
     end
     
     -- Then try smart matching
     for _, item in pairs(backpack:GetChildren()) do
         if item:IsA("Tool") and isPetNameMatch(item.Name, petType) then
-            item.Parent = player.Character
-            return true
+            -- Check if pet is protected before equipping
+            if not isPetProtected(item) then
+                item.Parent = player.Character
+                return true
+            end
         end
     end
     
@@ -274,7 +292,7 @@ function CoreFunctions.isPetEquipped()
     return false
 end
 
--- Function to sell equipped pet
+-- Function to sell equipped pet (with protection check)
 function CoreFunctions.sellEquippedPet()
     if not autoSellEnabled then return false, "Auto sell is disabled" end
     
@@ -282,6 +300,11 @@ function CoreFunctions.sellEquippedPet()
     local equipped, pet = CoreFunctions.isPetEquipped()
     if not equipped then
         return false, "No pet equipped"
+    end
+    
+    -- Check if the equipped pet is protected
+    if isPetProtected(pet) then
+        return false, "Pet is protected (has 'd' attribute checked)"
     end
     
     local success, error = pcall(function()
@@ -295,7 +318,7 @@ function CoreFunctions.sellEquippedPet()
     end
 end
 
--- Main auto sell loop function (improved with exact matching)
+-- Main auto sell loop function (improved with exact matching and protection check)
 local function autoSellLoop()
     if not autoSellEnabled then return end
     
@@ -327,9 +350,12 @@ local function autoSellLoop()
         end
         
         if shouldSellEquipped then
-            local success = CoreFunctions.sellEquippedPet()
-            if success then
-                lastSellTime = currentTime
+            -- Check if equipped pet is protected before selling
+            if not isPetProtected(equippedPet) then
+                local success = CoreFunctions.sellEquippedPet()
+                if success then
+                    lastSellTime = currentTime
+                end
             end
             return
         end
@@ -401,6 +427,27 @@ function CoreFunctions.toggleAutoSell(enabled)
     else
         return CoreFunctions.stopAutoSell()
     end
+end
+
+-- Function to check pet protection status (utility function)
+function CoreFunctions.isPetProtected(pet)
+    return isPetProtected(pet)
+end
+
+-- Function to get protection status of pets in backpack (utility function)
+function CoreFunctions.getBackpackPetProtectionStatus()
+    if not player.Character then return {} end
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return {} end
+    
+    local protectionStatus = {}
+    for _, item in pairs(backpack:GetChildren()) do
+        if item:IsA("Tool") then
+            protectionStatus[item.Name] = isPetProtected(item)
+        end
+    end
+    
+    return protectionStatus
 end
 
 -- Cleanup function
