@@ -35,7 +35,6 @@ local CoreFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/Gr
 local AutoBuy = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/AutoBuy.lua", "AutoBuy")
 local PetFunctions = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/PetMiddleFunctions.lua", "PetFunctions")
 local LocalPlayer = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/LocalPlayer.lua", "LocalPlayer")
-local vuln = safeLoad("https://raw.githubusercontent.com/DarenSensei/GAGTestHub/refs/heads/main/Vuln.lua", "vuln")
 local esp = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/esp.lua", "esp")
 local SettingsManager = safeLoad("https://raw.githubusercontent.com/DarenSensei/GrowAFilipino/refs/heads/main/SettingsManager.lua", "SettingsManager")
 if not CoreFunctions then
@@ -106,8 +105,6 @@ local autoSellEnabled = false
 local sellDelay = 1
 local isProcessing = false
 local autoSellConnection
-local ZenAuraEnabled = false
-local ZenQuestEnabled = false
 local antiAFKEnabled = true -- Default toggle is on
 local connection
 local lastClickTime = tick()
@@ -243,7 +240,7 @@ local MainTab = Window:Tab({
 })
 
 MainTab:Paragraph({
-    Title = "📜Changelogs : (v.1.3.4)",
+    Title = "📜Changelogs : (v.1.3.5)",
     Desc = "Added : Pet ESP",
     color = "#c7c0b7",
 })
